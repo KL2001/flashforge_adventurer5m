@@ -1,10 +1,9 @@
-{
-    "domain": "flashforge_adventurer5m",
+{ "domain": "flashforge_adventurer5m",
     "name": "Flashforge Adventurer 5M PRO",
     "version": "0.0.1",
     "documentation": "https://github.com/xombie21/flashforge_adventurer5m",
     "requirements": [
       "requests>=2.31.0"
     ],
-    "codeowners": []
-  }
+    "codeowners": ["xombie21"]
+}
