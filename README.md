@@ -18,15 +18,19 @@ This project integrates the FlashForge Adventurer 5M 3D printer with Home Assist
 ## Installation
 
 1. Clone this repository to your Home Assistant config\custom_components directory:
+
     ```bash
     git clone https://github.com/yourusername/flashforge_adventurer5m.git
     ```
+
 2. Add the following to your `configuration.yaml`:
+
     ```yaml
     flashforge_adventurer5m:
       host: YOUR_PRINTER_IP
       api_key: YOUR_API_KEY
     ```
+
 3. Restart Home Assistant.
 
 ## Usage

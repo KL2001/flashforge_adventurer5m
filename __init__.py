@@ -1,6 +1,6 @@
 import logging
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.discovery import load_platform
+from homeassistant.core import HomeAssistant # type: ignore
+from homeassistant.helpers.discovery import load_platform # type: ignore
 
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 from .coordinator import FlashforgeDataUpdateCoordinator
