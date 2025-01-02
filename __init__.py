@@ -1,6 +1,6 @@
 import logging
-from homeassistant.core import HomeAssistant # type: ignore
-from homeassistant.helpers.discovery import load_platform # type: ignore
+from homeassistant.core import HomeAssistant  # type: ignore
+from homeassistant.helpers.discovery import load_platform  # type: ignore
 
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 from .coordinator import FlashforgeDataUpdateCoordinator
@@ -8,12 +8,7 @@ from .coordinator import FlashforgeDataUpdateCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the Flashforge Adventurer 5M Pro integration from configuration.yaml.
-
-    Args:
-        hass (HomeAssistant): The Home Assistant instance.
-        config (dict): The configuration dictionary.
-    """
+    """Set up the Flashforge Adventurer 5M Pro integration from configuration.yaml."""
 
     # 1) Look in configuration.yaml for 'flashforge_adventurer5m:' block
     if DOMAIN not in config:
@@ -46,15 +41,14 @@ async def async_setup(hass: HomeAssistant, config: dict):
         scan_interval=scan_interval,
     )
 
-    # 3) Store coordinator so other platforms (like sensor) can access it
+    # 3) Initialize the domain dict in hass.data, then store coordinator
+    hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["coordinator"] = coordinator
 
-# 4) Start first data refresh
+    # 4) Start first data refresh
     await coordinator.async_refresh()
 
-# 5) Load sensor platform
+    # 5) Load sensor platform once
     load_platform(hass, "sensor", DOMAIN, {}, config)
 
-# 5) Load sensor platform
-    load_platform(hass, "sensor", DOMAIN, {}, config)
-# Then call load_platform("sensor", ...) so it sets up sensors from sensor.py.
+    return True
