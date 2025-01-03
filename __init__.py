@@ -1,36 +1,35 @@
 import logging
-from homeassistant.core import HomeAssistant  # type: ignore
-from homeassistant.helpers.discovery import load_platform  # type: ignore
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 from .coordinator import FlashforgeDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the Flashforge Adventurer 5M Pro integration from configuration.yaml."""
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """
+    This method is called when Home Assistant first loads your integration.
+    For a purely config-flow-based integration, we often just return True.
+    """
+    # If you don't support legacy YAML, we don't do anything here
+    return True
 
-    # 1) Look in configuration.yaml for 'flashforge_adventurer5m:' block
-    if DOMAIN not in config:
-        _LOGGER.warning("No '%s:' block found in configuration.yaml", DOMAIN)
-        return True
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """
+    Set up the Flashforge Adventurer 5M Pro integration from a config entry.
 
-    conf = config[DOMAIN]
-    missing_keys = []
-    host = conf.get("host")
-    serial_number = conf.get("serial_number")
-    check_code = conf.get("check_code")
-    scan_interval = conf.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+    This is called after the user has filled out your config flow form
+    (see config_flow.py), or if an existing entry is reloaded.
+    """
+    _LOGGER.debug("Setting up flashforge_adventurer5m entry: %s", entry.data)
 
-    if not host:
-        missing_keys.append("host")
-    if not serial_number:
-        missing_keys.append("serial_number")
-    if not check_code:
-        missing_keys.append("check_code")
-    if missing_keys:
-        _LOGGER.error("Missing required config keys: %s", ", ".join(missing_keys))
-        return False
+    # 1) Extract config data from the entry (provided by config_flow.py)
+    host = entry.data["host"]
+    serial_number = entry.data["serial_number"]
+    check_code = entry.data["check_code"]
+    scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
 
     # 2) Create a coordinator for fetching data
     coordinator = FlashforgeDataUpdateCoordinator(
@@ -41,14 +40,34 @@ async def async_setup(hass: HomeAssistant, config: dict):
         scan_interval=scan_interval,
     )
 
-    # 3) Initialize the domain dict in hass.data, then store coordinator
+    # 3) Store coordinator under hass.data
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["coordinator"] = coordinator
+    hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # 4) Start first data refresh
+    # 4) Refresh once at startup
     await coordinator.async_refresh()
 
-    # 5) Load sensor platform once
-    load_platform(hass, "sensor", DOMAIN, {}, config)
-    load_platform(hass, "camera", DOMAIN, {}, config)
+    # 5) Forward setup to sensor and camera platforms
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "camera")
+    )
+
     return True
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """
+    Handle removal/unloading of a config entry.
+    """
+    # 1) Unload the sensor and camera platforms
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, ["sensor", "camera"]
+    )
+
+    # 2) Remove coordinator from hass.data
+    if unload_ok:
+        hass.data[DOMAIN].pop(entry.entry_id)
+
+    return unload_ok
