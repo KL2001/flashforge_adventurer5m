@@ -9,11 +9,13 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Example typed dict for storing printer info (IP/port).
+
+# Example typed dict or class for storing printer info (if you need it).
 class PrinterDefinition:
     def __init__(self, ip_address: str, port: int):
         self.ip_address = ip_address
         self.port = port
+
 
 # Example mixin that sets a base name/unique_id
 # Adjust to suit your actual usage.
@@ -26,9 +28,15 @@ class FlashforgeAdventurerCommonPropertiesMixin:
     def unique_id(self) -> str:
         return "flashforge_5m_pro"
 
-async def async_setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up all Flashforge Adventurer 5M Pro sensors."""
-    coordinator = hass.data[DOMAIN]["coordinator"]
+
+async def async_setup_entry(hass, entry, async_add_entities):
+    """
+    Set up all Flashforge Adventurer 5M Pro sensors via the config entry.
+    Home Assistant will call this after you call:
+    `await hass.config_entries.async_forward_entry_setup(entry, "sensor")`
+    in your __init__.py.
+    """
+    coordinator = hass.data[DOMAIN][entry.entry_id]
 
     sensors = []
 
@@ -132,7 +140,7 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     #  E. Filament / Usage
     #
     detail_fields_filament = [
-        ("Cumulative Filament", "cumulativeFilament", "m"),      # or "meter" 
+        ("Cumulative Filament", "cumulativeFilament", "m"),      # or "meter"
         ("Cumulative Print Time", "cumulativePrintTime", "min"), # or your best guess
         ("Fill Amount", "fillAmount", None),
         ("Left Filament Type", "leftFilamentType", None),
@@ -187,7 +195,7 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
             unit=unit
         ))
 
-    add_entities(sensors, True)
+    async_add_entities(sensors, True)
 
 
 class FlashforgeSensor(SensorEntity):
@@ -200,7 +208,7 @@ class FlashforgeSensor(SensorEntity):
         self._is_top_level = is_top_level
         self._unit = unit
         self._is_percentage = is_percentage
-        # Build a unique ID
+        # Build a unique ID (assuming coordinator has .serial_number attribute)
         unique_part = attribute.replace("_", "").replace(" ", "").lower()
         self._attr_unique_id = f"flashforge_{coordinator.serial_number}_{unique_part}"
 
@@ -227,15 +235,17 @@ class FlashforgeSensor(SensorEntity):
 
     @property
     def should_poll(self):
+        """We rely on the DataUpdateCoordinator; no direct polling."""
         return False
 
     @property
     def available(self):
+        """Available if last update from coordinator was successful."""
         return self._coordinator.last_update_success
 
     @property
     def native_value(self):
-        """Extract the relevant data from coordinator's last fetch."""
+        """Extract the relevant data from the coordinator's last fetch."""
         data = self._coordinator.data
         if not data:
             return None
@@ -254,10 +264,11 @@ class FlashforgeSensor(SensorEntity):
         if self._is_percentage:
             # Convert 0..1 -> 0..100%
             return round(float(val) * 100, 1)
+
         return val
 
     async def async_update(self):
-        """Manual update if forced by HA."""
+        """If forced by HA, we trigger a coordinator refresh."""
         await self._coordinator.async_request_refresh()
 
     async def async_added_to_hass(self):
