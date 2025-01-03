@@ -1,6 +1,6 @@
 import logging
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import DOMAIN
@@ -24,13 +24,13 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
             coordinator,
             name="Flashforge Right Nozzle Temp",
             attribute="rightTemp",
-            unit=TEMP_CELSIUS
+            unit=UnitOfTemperature.CELSIUS
         ),
         FlashforgeSensor(
             coordinator,
             name="Flashforge Bed Temp",
             attribute="platTemp",
-            unit=TEMP_CELSIUS
+            unit=UnitOfTemperature.CELSIUS
         ),
         FlashforgeSensor(
             coordinator,
