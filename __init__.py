@@ -49,6 +49,6 @@ async def async_setup(hass: HomeAssistant, config: dict):
     await coordinator.async_refresh()
 
     # 5) Load sensor platform once
-    load_platform(hass, "camera", "sensor", DOMAIN, {}, config)
-
+    load_platform(hass, "sensor", DOMAIN, {}, config)
+    load_platform(hass, "camera", DOMAIN, {}, config)
     return True
