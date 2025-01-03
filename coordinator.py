@@ -2,6 +2,7 @@
 
 import logging
 import aiohttp
+import json
 from datetime import timedelta
 
 from homeassistant.core import HomeAssistant
@@ -48,7 +49,8 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=10) as resp:
                 resp.raise_for_status()
-                data = await resp.json()
+                text_data = await resp.text()
+                data = json.loads(text_data)
 
         _LOGGER.debug("Received response data: %s", data)
         return data
