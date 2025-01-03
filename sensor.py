@@ -10,9 +10,10 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 # Example typed dict for storing printer info (IP/port).
-class PrinterDefinition(TypedDict):
-    ip_address: str
-    port: int
+class PrinterDefinition:
+    def __init__(self, ip_address: str, port: int):
+        self.ip_address = ip_address
+        self.port = port
 
 # Example mixin that sets a base name/unique_id
 # Adjust to suit your actual usage.
