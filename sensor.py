@@ -9,6 +9,21 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+# Example typed dict for storing printer info (IP/port).
+class PrinterDefinition(TypedDict):
+    ip_address: str
+    port: int
+
+# Example mixin that sets a base name/unique_id
+# Adjust to suit your actual usage.
+class FlashforgeAdventurerCommonPropertiesMixin:
+    @property
+    def name(self) -> str:
+        return "Flashforge Adventurer 5M PRO"
+
+    @property
+    def unique_id(self) -> str:
+        return "flashforge_5m_pro"
 
 async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up all Flashforge Adventurer 5M Pro sensors."""
