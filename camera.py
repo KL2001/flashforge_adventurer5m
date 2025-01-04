@@ -16,15 +16,10 @@ async def async_setup_entry(
 ) -> bool:
     """
     Set up camera entities for the Flashforge Adventurer 5M PRO via a config entry.
-
-    In this version of "Option B," we ensure that MjpegCamera
-    receives a valid mjpeg_url string in its constructor so we don't
-    hit "TypeError: Invalid type for url. Expected str or httpx.URL, got: None."
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    # We build the actual camera entity, passing a fallback MJPEG URL
-    # if coordinator.data doesn't contain 'cameraStreamUrl' yet.
+    # Create camera entities
     cameras = [
         FlashforgeAdventurer5MCamera(coordinator),
     ]
@@ -36,40 +31,41 @@ async def async_setup_entry(
 class FlashforgeAdventurer5MCamera(MjpegCamera):
     """
     A camera entity for the Flashforge Adventurer 5M PRO, using the MjpegCamera base class.
-    We pass a valid 'mjpeg_url' to the parent constructor to avoid None errors.
     """
 
     def __init__(self, coordinator):
         """
+        Initialize the MJPEG camera entity.
+
         :param coordinator: The DataUpdateCoordinator that holds printer data (including cameraStreamUrl).
         """
         self._coordinator = coordinator
-        self._attr_unique_id = f"flashforge_{coordinator.serial_number}_camera"
+        detail = coordinator.data.get("detail", {})
+        serial_number = detail.get("name", "unknown")
+        unique_id = f"flashforge_{serial_number}_camera"
+        name = f"Flashforge Adventurer 5M PRO Camera"
 
-        # If the printer hasn't yet provided "cameraStreamUrl," fall back to a known port:
-        # e.g., http://<coordinator.host>:8080/?action=stream
-        # Assuming 'host' is stored on the coordinator. Adjust as needed if it's stored differently.
-        fallback_url = None
-        if hasattr(coordinator, "host"):
-            fallback_url = f"http://{coordinator.host}:8080/?action=stream"
+        # Fetch the stream URL from the coordinator data
+        stream_url = detail.get("cameraStreamUrl")
 
-        data = coordinator.data or {}
-        detail = data.get("detail", {})
-        # If 'cameraStreamUrl' is missing or empty, use the fallback:
-        stream_url = detail.get("cameraStreamUrl") or fallback_url
-
-        # Avoid a None-type url:
         if not stream_url:
-            _LOGGER.warning(
-                "No 'cameraStreamUrl' and no known fallback. Using a dummy URL to prevent errors."
-            )
-            stream_url = "http://0.0.0.0/"
+            # Use fallback if 'cameraStreamUrl' is missing
+            ip_addr = detail.get("ipAddr")
+            if ip_addr:
+                stream_url = f"http://{ip_addr}:8080/?action=stream"
+                _LOGGER.debug(f"'cameraStreamUrl' missing, using fallback URL: {stream_url}")
+            else:
+                _LOGGER.warning(
+                    "Coordinator does not have 'ipAddr' and 'cameraStreamUrl' is missing. Using dummy URL."
+                )
+                stream_url = "http://0.0.0.0/"
 
         super().__init__(
-            name="Flashforge Adventurer 5M PRO camera",
+            name=name,
             mjpeg_url=stream_url,
             still_image_url=None
         )
+        self._attr_unique_id = unique_id
 
     @property
     def device_info(self):
@@ -82,41 +78,42 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
         fw = detail.get("firmwareVersion")
 
         return {
-            "identifiers": {(DOMAIN, self._coordinator.serial_number)},
+            "identifiers": { (DOMAIN, detail.get("name", "unknown")) },
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
             "model": "Adventurer 5M PRO",
             "sw_version": fw,
         }
 
+    @property
+    def is_streaming(self):
+        """MjpegCamera sets up a continuous stream, so this is True."""
+        return True
+
+    @property
+    def stream_source(self) -> str | None:
+        """
+        Return the camera stream URL.
+        This property is used by HA to access the live stream.
+        """
+        return self._coordinator.data.get("detail", {}).get("cameraStreamUrl") or f"http://{self._coordinator.data.get('detail', {}).get('ipAddr', '0.0.0.0')}:8080/?action=stream"
+
     async def async_added_to_hass(self) -> None:
         """
-        Register an update listener so we refresh if the coordinator data changes.
+        Register for coordinator updates to handle dynamic changes in the stream URL.
         """
         self.async_on_remove(
-            self._coordinator.async_add_listener(self._update_mjpeg_url)
+            self._coordinator.async_add_listener(self._update_stream_url)
         )
 
-    def _update_mjpeg_url(self) -> None:
+    def _update_stream_url(self) -> None:
         """
         If the coordinator fetches a new 'cameraStreamUrl', update our mjpeg_url.
         Then call self.async_write_ha_state() to refresh the camera entity.
         """
-        data = self._coordinator.data or {}
-        detail = data.get("detail", {})
-
-        # If the detail includes a fresh 'cameraStreamUrl', use it.
-        # Otherwise keep our existing fallback.
-        new_url = detail.get("cameraStreamUrl")
-        if not new_url and hasattr(self._coordinator, "host"):
-            new_url = f"http://{self._coordinator.host}:8080/?action=stream"
+        new_url = self.stream_source
 
         if new_url and new_url != self._mjpeg_url:
             _LOGGER.debug("Updating camera stream URL to: %s", new_url)
             self._mjpeg_url = new_url
             self.async_write_ha_state()
-
-    @property
-    def is_streaming(self):
-        """MjpegCamera sets up a continuous stream, so this is True."""
-        return True
