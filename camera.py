@@ -16,6 +16,8 @@ async def async_setup_entry(
 ) -> bool:
     """
     Set up camera entities for the Flashforge Adventurer 5M PRO via a config entry.
+
+    Option B: The camera only needs the coordinator to fetch the stream URL.
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
@@ -31,6 +33,7 @@ async def async_setup_entry(
 class FlashforgeAdventurer5MCamera(MjpegCamera):
     """
     A camera entity for the Flashforge Adventurer 5M PRO, using the MjpegCamera base class.
+    This implementation assumes that the camera stream URL is available via the coordinator's data.
     """
 
     def __init__(self, coordinator):
@@ -40,6 +43,8 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
         :param coordinator: The DataUpdateCoordinator that holds printer data (including cameraStreamUrl).
         """
         self._coordinator = coordinator
+
+        # Extract necessary details from coordinator data
         detail = coordinator.data.get("detail", {})
         serial_number = detail.get("name", "unknown")
         unique_id = f"flashforge_{serial_number}_camera"
@@ -96,7 +101,21 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
         Return the camera stream URL.
         This property is used by HA to access the live stream.
         """
-        return self._coordinator.data.get("detail", {}).get("cameraStreamUrl") or f"http://{self._coordinator.data.get('detail', {}).get('ipAddr', '0.0.0.0')}:8080/?action=stream"
+        detail = self._coordinator.data.get("detail", {})
+        camera_stream_url = detail.get("cameraStreamUrl")
+        ip_addr = detail.get("ipAddr")
+
+        if camera_stream_url:
+            return camera_stream_url
+        elif ip_addr:
+            fallback_url = f"http://{ip_addr}:8080/?action=stream"
+            _LOGGER.debug(f"No 'cameraStreamUrl', using fallback URL: {fallback_url}")
+            return fallback_url
+        else:
+            _LOGGER.warning(
+                "No 'cameraStreamUrl' and no 'ipAddr' available. Using dummy URL."
+            )
+            return "http://0.0.0.0/"
 
     async def async_added_to_hass(self) -> None:
         """
