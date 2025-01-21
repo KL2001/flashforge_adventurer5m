@@ -1,13 +1,17 @@
 # FlashForge Adventurer 5M Integration
 
-This project integrates the FlashForge Adventurer 5M 3D printer with Home Assistant.
+This project integrates the FlashForge Adventurer 5M 3D printer in LAN mode with Home Assistant.
 
 ## Features
 
 - Monitor printer status
-- Start, pause, and stop prints
-- Receive notifications on print completion
+- View camera feed
 - View print progress and details
+
+## Planned Features
+
+- Receive notifications on print completion
+- Start, pause, and stop prints
 
 ## Requirements
 
@@ -20,7 +24,7 @@ This project integrates the FlashForge Adventurer 5M 3D printer with Home Assist
 1. Clone this repository to your Home Assistant config\custom_components directory:
 
     ```bash
-    git clone https://github.com/yourusername/flashforge_adventurer5m.git
+    git clone https://github.com/xombie21/flashforge_adventurer5m.git
     ```
 
 2. Add the following to your `configuration.yaml`:
@@ -28,7 +32,7 @@ This project integrates the FlashForge Adventurer 5M 3D printer with Home Assist
     ```yaml
     flashforge_adventurer5m:
       host: YOUR_PRINTER_IP
-      api_key: YOUR_API_KEY
+      printer_id: YOUR_PRINTER_ID
     ```
 
 3. Restart Home Assistant.

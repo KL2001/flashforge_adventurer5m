@@ -27,16 +27,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # 1) Extract config data from the entry (provided by config_flow.py)
     host = entry.data["host"]
-    serial_number = entry.data["serial_number"]
-    check_code = entry.data["check_code"]
+    printer_name = entry.data["printer_name"]
+    printer_id = entry.data["printer_id"]
     scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
 
     # 2) Create a coordinator for fetching data
     coordinator = FlashforgeDataUpdateCoordinator(
         hass,
         host=host,
-        serial_number=serial_number,
-        check_code=check_code,
+        printer_name=printer_name,
+        printer_id=printer_id,
         scan_interval=scan_interval,
     )
 
