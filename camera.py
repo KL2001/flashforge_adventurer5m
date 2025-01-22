@@ -46,8 +46,8 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
 
         # Extract necessary details from coordinator data
         detail = coordinator.data.get("detail", {})
-        printer_name = detail.get("name", "unknown")
-        unique_id = f"flashforge_{printer_name}_camera"
+        serial_number = detail.get("name", "unknown")
+        unique_id = f"flashforge_{serial_number}_camera"
         name = f"Flashforge Adventurer 5M PRO Camera"
 
         # Fetch the stream URL from the coordinator data
@@ -76,7 +76,7 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
     def device_info(self):
         """
         Group the camera entity under the same device as sensors,
-        using the coordinator's printer name.
+        using the coordinator's serial number.
         """
         data = self._coordinator.data or {}
         detail = data.get("detail", {})

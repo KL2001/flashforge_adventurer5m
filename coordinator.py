@@ -13,21 +13,21 @@ _LOGGER = logging.getLogger(__name__)
 class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
     """Fetch data from the Flashforge Adventurer 5M Pro printer."""
 
-    def __init__(self, hass: HomeAssistant, host: str, printer_name: str,
-                 printer_id: str, scan_interval: int = 10) -> None:
+    def __init__(self, hass: HomeAssistant, host: str, serial_number: str,
+                 check_code: str, scan_interval: int = 10) -> None:
         """
         Initialize the coordinator.
 
         :param hass: Home Assistant instance
         :param host: Printer's IP address or hostname
-        :param printer_name: Printer's name
-        :param printer_id: Printer's ID
+        :param serial_number: Printer's serial number
+        :param check_code: Printer's check code
         :param scan_interval: How often (in seconds) to poll the printer
         """
         self.hass = hass
         self.host = host
-        self.printer_name = printer_name
-        self.printer_id = printer_id
+        self.serial_number = serial_number
+        self.check_code = check_code
 
         super().__init__(
             hass,
@@ -40,8 +40,8 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         """Perform the POST request asynchronously and return the JSON response."""
         url = f"http://{self.host}:8898/detail"
         payload = {
-            "printerName": self.printer_name,
-            "printerId": self.printer_id
+            "serialNumber": self.serial_number,
+            "checkCode": self.check_code
         }
 
         _LOGGER.debug("Requesting printer data from %s with payload: %s", url, payload)

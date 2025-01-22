@@ -208,9 +208,9 @@ class FlashforgeSensor(SensorEntity):
         self._is_top_level = is_top_level
         self._unit = unit
         self._is_percentage = is_percentage
-        # Build a unique ID (assuming coordinator has .printer_name attribute)
+        # Build a unique ID (assuming coordinator has .serial_number attribute)
         unique_part = attribute.replace("_", "").replace(" ", "").lower()
-        self._attr_unique_id = f"flashforge_{coordinator.printer_name}_{unique_part}"
+        self._attr_unique_id = f"flashforge_{coordinator.serial_number}_{unique_part}"
 
     @property
     def native_unit_of_measurement(self):
@@ -226,7 +226,7 @@ class FlashforgeSensor(SensorEntity):
         fw = detail.get("firmwareVersion")
 
         return {
-            "identifiers": {(DOMAIN, self._coordinator.printer_name)},
+            "identifiers": {(DOMAIN, self._coordinator.serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
             "model": "Adventurer 5M PRO",

@@ -27,16 +27,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # 1) Extract config data from the entry (provided by config_flow.py)
     host = entry.data["host"]
-    printer_name = entry.data["printer_name"]
-    printer_id = entry.data["printer_id"]
+    serial_number = entry.data["serial_number"]
+    check_code = entry.data["check_code"]
     scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
 
     # 2) Create a coordinator for fetching data
     coordinator = FlashforgeDataUpdateCoordinator(
         hass,
         host=host,
-        printer_name=printer_name,
-        printer_id=printer_id,
+        serial_number=serial_number,
+        check_code=check_code,
         scan_interval=scan_interval,
     )
 
@@ -48,8 +48,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_refresh()
 
     # 5) Forward setup to sensor and camera platforms
-    await hass.config_entries.async_forward_entry_setup(entry, "sensor")
-    await hass.config_entries.async_forward_entry_setup(entry, "camera")
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    )
+    hass.async_create_task(
+        hass.config_entries.async_forward_entry_setup(entry, "camera")
+    )
 
     return True
 
