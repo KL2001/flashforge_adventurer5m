@@ -83,7 +83,7 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
         fw = detail.get("firmwareVersion")
 
         return {
-            "identifiers": { (DOMAIN, detail.get("name", "unknown")) },
+            "identifiers": {(DOMAIN, self._coordinator.serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
             "model": "Adventurer 5M PRO",
