@@ -48,10 +48,23 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
 
         _LOGGER.debug("Requesting printer data from %s with payload: %s", url, payload)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=payload, timeout=10) as resp:
-                resp.raise_for_status()
-                data = await resp.json()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as resp:
+                    resp.raise_for_status()
+                    text_data = await resp.text()
+                    try:
+                        data = json.loads(text_data)
+                    except json.JSONDecodeError as e:
+                        _LOGGER.error("JSON decode error: %s", e)
+                        _LOGGER.debug("Response Text: %s", text_data)
+                        return {}
+        except aiohttp.ClientError as e:
+            _LOGGER.error("HTTP request failed: %s", e)
+            return {}
+        except Exception as e:
+            _LOGGER.exception("Unexpected error during data fetch: %s", e)
+            return {}
 
         _LOGGER.debug("Received response data: %s", data)
         return data

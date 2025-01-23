@@ -78,6 +78,9 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
         Group the camera entity under the same device as sensors,
         using the coordinator's serial number.
         """
+        if not self._coordinator.data:
+            return None  # Or provide default values
+
         fw = self._coordinator.data.get("detail", {}).get("firmwareVersion")
 
         return {

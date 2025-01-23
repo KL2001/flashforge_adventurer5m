@@ -221,6 +221,9 @@ class FlashforgeSensor(SensorEntity):
     @property
     def device_info(self):
         """Group these sensors under one device."""
+        if not self.coordinator.data:
+            return None  # Or provide default values
+
         fw = self.coordinator.data.get("detail", {}).get("firmwareVersion")
 
         return {

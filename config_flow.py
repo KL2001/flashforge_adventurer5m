@@ -3,6 +3,8 @@ Config flow for Flashforge Adventurer 5M PRO integration.
 """
 import logging
 import voluptuous as vol
+import aiohttp
+import json
 
 from homeassistant import config_entries, exceptions
 from homeassistant.core import HomeAssistant
@@ -85,11 +87,28 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         check_code: str
     ) -> None:
         """
-        Optional method to verify the printer is reachable and the
-        check_code is valid. Raise exceptions on failure.
+        Verify the printer is reachable and the check_code is valid.
+        Raise exceptions on failure.
         """
-        # Implement actual connection testing here
-        pass
+        url = f"http://{host}:8898/detail"
+        payload = {
+            "serialNumber": serial_number,
+            "checkCode": check_code
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as resp:
+                    resp.raise_for_status()
+                    text_data = await resp.text()
+                    try:
+                        data = json.loads(text_data)
+                        if "detail" not in data:
+                            raise InvalidAuth
+                    except json.JSONDecodeError:
+                        raise InvalidAuth
+        except aiohttp.ClientError as e:
+            raise CannotConnect from e
 
 
 class CannotConnect(exceptions.HomeAssistantError):
