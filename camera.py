@@ -46,7 +46,7 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
 
         # Extract necessary details from coordinator data
         detail = coordinator.data.get("detail", {})
-        serial_number = detail.get("name", "unknown")
+        serial_number = coordinator.serial_number  # Use serial_number from coordinator
         unique_id = f"flashforge_{serial_number}_camera"
         name = f"Flashforge Adventurer 5M PRO Camera"
 
@@ -78,12 +78,10 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
         Group the camera entity under the same device as sensors,
         using the coordinator's serial number.
         """
-        data = self._coordinator.data or {}
-        detail = data.get("detail", {})
-        fw = detail.get("firmwareVersion")
+        fw = self._coordinator.data.get("detail", {}).get("firmwareVersion")
 
         return {
-            "identifiers": {(DOMAIN, self._coordinator.serial_number)},
+            "identifiers": {(DOMAIN, self._coordinator.serial_number)},  # Ensure this matches sensor.py
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
             "model": "Adventurer 5M PRO",

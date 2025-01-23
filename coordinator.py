@@ -8,13 +8,15 @@ from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
 class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
     """Fetch data from the Flashforge Adventurer 5M Pro printer."""
 
     def __init__(self, hass: HomeAssistant, host: str, serial_number: str,
-                 check_code: str, scan_interval: int = 10) -> None:
+                 check_code: str, scan_interval: int = DEFAULT_SCAN_INTERVAL) -> None:
         """
         Initialize the coordinator.
 
@@ -49,8 +51,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=10) as resp:
                 resp.raise_for_status()
-                text_data = await resp.text()
-                data = json.loads(text_data)
+                data = await resp.json()
 
         _LOGGER.debug("Received response data: %s", data)
         return data
@@ -59,7 +60,5 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         """
         Fetch data method required by DataUpdateCoordinator.
         This is called automatically by coordinator.async_refresh().
-
-        We delegate the actual request to _fetch_data().
         """
         return await self._fetch_data()

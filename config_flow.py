@@ -88,20 +88,7 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         Optional method to verify the printer is reachable and the
         check_code is valid. Raise exceptions on failure.
         """
-        # For example, do a quick POST to http://<host>:8898/detail
-        # If you can connect, do nothing. If not, raise CannotConnect or InvalidAuth.
-
-        # Pseudocode:
-        # try:
-        #     async with aiohttp.ClientSession() as session:
-        #         resp = await session.post(..., json=...)
-        #         resp.raise_for_status()
-        #         data = await resp.json()
-        #         if data.get("code") != 0:
-        #             raise InvalidAuth
-        # except aiohttp.ClientError:
-        #     raise CannotConnect
-
+        # Implement actual connection testing here
         pass
 
 

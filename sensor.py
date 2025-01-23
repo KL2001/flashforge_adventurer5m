@@ -26,7 +26,7 @@ class FlashforgeAdventurerCommonPropertiesMixin:
 
     @property
     def unique_id(self) -> str:
-        return "flashforge_5m_pro"
+        return f"flashforge_{self.coordinator.serial_number}"
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -195,22 +195,22 @@ async def async_setup_entry(hass, entry, async_add_entities):
             unit=unit
         ))
 
-    async_add_entities(sensors, True)
+    async_add_entities(sensors)
 
 
 class FlashforgeSensor(SensorEntity):
     """A sensor for one JSON field from the printer."""
 
     def __init__(self, coordinator, name, attribute, is_top_level=False, unit=None, is_percentage=False):
-        self._coordinator = coordinator
+        self.coordinator = coordinator
         self._attr_name = name
         self._attribute = attribute
         self._is_top_level = is_top_level
         self._unit = unit
         self._is_percentage = is_percentage
-        # Build a unique ID (assuming coordinator has .serial_number attribute)
+        # Build a unique ID using serial_number
         unique_part = attribute.replace("_", "").replace(" ", "").lower()
-        self._attr_unique_id = f"flashforge_{coordinator.serial_number}_{unique_part}"
+        self._attr_unique_id = f"flashforge_{self.coordinator.serial_number}_{unique_part}"
 
     @property
     def native_unit_of_measurement(self):
@@ -221,12 +221,10 @@ class FlashforgeSensor(SensorEntity):
     @property
     def device_info(self):
         """Group these sensors under one device."""
-        data = self._coordinator.data or {}
-        detail = data.get("detail", {})
-        fw = detail.get("firmwareVersion")
+        fw = self.coordinator.data.get("detail", {}).get("firmwareVersion")
 
         return {
-            "identifiers": {(DOMAIN, self._coordinator.serial_number)},
+            "identifiers": {(DOMAIN, self.coordinator.serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
             "model": "Adventurer 5M PRO",
@@ -241,12 +239,12 @@ class FlashforgeSensor(SensorEntity):
     @property
     def available(self):
         """Available if last update from coordinator was successful."""
-        return self._coordinator.last_update_success
+        return self.coordinator.last_update_success
 
     @property
     def native_value(self):
         """Extract the relevant data from the coordinator's last fetch."""
-        data = self._coordinator.data
+        data = self.coordinator.data
         if not data:
             return None
 
@@ -269,10 +267,10 @@ class FlashforgeSensor(SensorEntity):
 
     async def async_update(self):
         """If forced by HA, we trigger a coordinator refresh."""
-        await self._coordinator.async_request_refresh()
+        await self.coordinator.async_request_refresh()
 
     async def async_added_to_hass(self):
         """Register for coordinator updates."""
         self.async_on_remove(
-            self._coordinator.async_add_listener(self.async_write_ha_state)
+            self.coordinator.async_add_listener(self.async_write_ha_state)
         )
