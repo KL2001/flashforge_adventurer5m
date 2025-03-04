@@ -45,8 +45,9 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
         - **Host**: IP address or hostname of your printer (e.g., 192.168.1.50).
         - **Serial Number**: Serial number of your printer.
         - **Check Code**: Authentication code for your printer.
-b. **Manual Configuration**
-      Add the following to your `configuration.yaml`:
+
+    b. **Manual Configuration**
+      - Add the following to your `configuration.yaml`:
       
   ```yaml
   flashforge_adventurer5m:
@@ -57,7 +58,7 @@ b. **Manual Configuration**
       
       Replace `YOUR_PRINTER_IP`, `YOUR_PRINTER_SERIAL_NUMBER`, and `YOUR_PRINTER_CHECK_CODE` with the actual values for your printer.
 
-3. **Restart Home Assistant**
+1. **Restart Home Assistant**
 
    Restart Home Assistant to apply the changes.
 
