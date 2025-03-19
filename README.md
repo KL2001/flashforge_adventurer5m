@@ -1,4 +1,4 @@
-# FlashForge Adventurer 5M Integration
+# FlashForge Adventurer 5M Pro Integration
 
 This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode with Home Assistant.
 
@@ -52,7 +52,7 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
   ```yaml
   flashforge_adventurer5m:
     host: YOUR_PRINTER_IP
-    serial_number: YOUR_PRINTER_SERIAL_NUMBER
+    serial_number: YOUR_PRINTER_SERIAL_NUMBER #including the prefix "SN"
     check_code: YOUR_PRINTER_CHECK_CODE
   ```
       
