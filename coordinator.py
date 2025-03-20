@@ -1,5 +1,3 @@
-# coordinator.py
-
 import logging
 import aiohttp
 import json
@@ -75,3 +73,42 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         This is called automatically by coordinator.async_refresh().
         """
         return await self._fetch_data()
+
+    async def _send_command(self, command: str, payload: dict = None) -> bool:
+        """Send a command to the printer."""
+        url = f"http://{self.host}:8898/{command}"
+        payload = payload or {}
+        payload.update({
+            "serialNumber": self.serial_number,
+            "checkCode": self.check_code
+        })
+
+        _LOGGER.debug("Sending command %s to %s with payload: %s", command, url, payload)
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=10) as resp:
+                    resp.raise_for_status()
+                    return True
+        except aiohttp.ClientError as e:
+            _LOGGER.error("HTTP request failed: %s", e)
+            return False
+        except Exception as e:
+            _LOGGER.exception("Unexpected error during command send: %s", e)
+            return False
+
+    async def pause_print(self) -> bool:
+        """Pause the current print job."""
+        return await self._send_command("pause")
+
+    async def start_print(self, file_path: str) -> bool:
+        """Start a new print job."""
+        return await self._send_command("start", {"filePath": file_path})
+
+    async def cancel_print(self) -> bool:
+        """Cancel the current print job."""
+        return await self._send_command("cancel")
+
+    async def toggle_light(self) -> bool:
+        """Toggle the printer's light."""
+        return await self._send_command("toggle_light")

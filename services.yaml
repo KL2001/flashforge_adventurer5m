@@ -1,0 +1,18 @@
+pause_print:
+  description: "Pause the current print job."
+  fields: {}
+
+start_print:
+  description: "Start a new print job."
+  fields:
+    file_path:
+      description: "Path to the G-code file to print."
+      example: "/path/to/file.gcode"
+
+cancel_print:
+  description: "Cancel the current print job."
+  fields: {}
+
+toggle_light:
+  description: "Toggle the printer's light."
+  fields: {}
