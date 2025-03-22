@@ -61,14 +61,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_toggle_light(call):
         """Handle the service call to toggle the printer's light."""
         coordinator = hass.data[DOMAIN][entry.entry_id]
-        await coordinator.toggle_light()
+        state = call.data["state"]
+        await coordinator.toggle_light(state)
 
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(DOMAIN, "start_print", handle_start_print, schema=vol.Schema({
         vol.Required("file_path"): cv.string,
     }))
     hass.services.async_register(DOMAIN, "cancel_print", handle_cancel_print)
-    hass.services.async_register(DOMAIN, "toggle_light", handle_toggle_light)
+    hass.services.async_register(DOMAIN, "toggle_light", handle_toggle_light, schema=vol.Schema({
+        vol.Required("state"): cv.boolean,
+    }))
 
     return True
 
