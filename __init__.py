@@ -42,6 +42,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "camera"])
 
     # Register services
+    async def handle_pause_print(call):
+        """Handle the service call to pause the print."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.pause_print()
+
+    async def handle_start_print(call):
+        """Handle the service call to start a print."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        file_path = call.data["file_path"]
+        await coordinator.start_print(file_path)
+
+    async def handle_cancel_print(call):
+        """Handle the service call to cancel the print."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.cancel_print()
+
+    async def handle_toggle_light(call):
+        """Handle the service call to toggle the printer's light."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.toggle_light()
+
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(DOMAIN, "start_print", handle_start_print, schema=vol.Schema({
         vol.Required("file_path"): cv.string,
@@ -63,24 +84,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
-
-async def handle_pause_print(call):
-    """Handle the service call to pause the print."""
-    coordinator = hass.data[DOMAIN][call.data["entry_id"]]
-    await coordinator.pause_print()
-
-async def handle_start_print(call):
-    """Handle the service call to start a print."""
-    coordinator = hass.data[DOMAIN][call.data["entry_id"]]
-    file_path = call.data["file_path"]
-    await coordinator.start_print(file_path)
-
-async def handle_cancel_print(call):
-    """Handle the service call to cancel the print."""
-    coordinator = hass.data[DOMAIN][call.data["entry_id"]]
-    await coordinator.cancel_print()
-
-async def handle_toggle_light(call):
-    """Handle the service call to toggle the printer's light."""
-    coordinator = hass.data[DOMAIN][call.data["entry_id"]]
-    await coordinator.toggle_light()
