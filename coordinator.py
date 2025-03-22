@@ -112,7 +112,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         """Cancel the current print job."""
         return await self._send_command("cancel")
 
-    async def toggle_light(self) -> bool:
+    async def toggle_light(self, state: bool) -> bool:
         """Toggle the printer's light."""
-        # Verify the correct endpoint for toggling the light
-        return await self._send_command("toggle_light")
+        command = "LED: 1" if state else "LED: 0"
+        return await self._send_command("command", {"command": command})
