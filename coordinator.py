@@ -88,6 +88,9 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload, timeout=10) as resp:
+                    if resp.status == 404:
+                        _LOGGER.error("Command %s not found at URL: %s", command, url)
+                        return False
                     resp.raise_for_status()
                     return True
         except aiohttp.ClientError as e:
@@ -111,4 +114,5 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def toggle_light(self) -> bool:
         """Toggle the printer's light."""
+        # Verify the correct endpoint for toggling the light
         return await self._send_command("toggle_light")
