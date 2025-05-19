@@ -15,4 +15,7 @@ cancel_print:
 
 toggle_light:
   description: "Toggle the printer's light."
-  fields: {}
+  fields:
+    state:
+      description: "Turn the light on (true) or off (false)."
+      example: true

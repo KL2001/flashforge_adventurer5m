@@ -4,7 +4,6 @@
   "version": "0.0.2",
   "documentation": "https://github.com/xombie21/flashforge_adventurer5m",
   "requirements": [
-    "requests>=2.31.0",
     "aiohttp"
   ],
   "codeowners": ["xombie21"],
