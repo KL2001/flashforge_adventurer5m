@@ -2,7 +2,6 @@ import logging
 import aiohttp
 import json
 from datetime import timedelta
-from typing import Optional
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
@@ -74,7 +73,8 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         This is called automatically by coordinator.async_refresh().
         """
         return await self._fetch_data()
-    async def _send_command(self, command: str, payload: Optional[dict] = None) -> bool:
+
+    async def _send_command(self, command: str, payload: dict = None) -> bool:
         """Send a command to the printer."""
         url = f"http://{self.host}:8898/{command}"
         payload = payload or {}
