@@ -9,7 +9,7 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
   - Track print progress and details.
 
 - **View Camera Feed**
-  - Access live camera feed from the printer''s webcam.
+  - Access live camera feed from the printer's webcam.
 
 ## Planned Features
 
@@ -48,16 +48,17 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
         - **Check Code**: Authentication code for your printer.
 
     b. **Manual Configuration**
-      - Add the following to your `configuration.yaml`:
-      
-  ```yaml
-  flashforge_adventurer5m:
-    host: YOUR_PRINTER_IP
-    serial_number: YOUR_PRINTER_SERIAL_NUMBER #including the prefix "SN"
-    check_code: YOUR_PRINTER_CHECK_CODE
-  ```
-      
-      Replace `YOUR_PRINTER_IP`, `YOUR_PRINTER_SERIAL_NUMBER`, and `YOUR_PRINTER_CHECK_CODE` with the actual values for your printer.
+
+- Add the following to your `configuration.yaml`:
+
+```yaml
+flashforge_adventurer5m:
+  host: YOUR_PRINTER_IP
+  serial_number: YOUR_PRINTER_SERIAL_NUMBER #including the prefix "SN"
+  check_code: YOUR_PRINTER_CHECK_CODE
+```
+
+Replace `YOUR_PRINTER_IP`, `YOUR_PRINTER_SERIAL_NUMBER`, and `YOUR_PRINTER_CHECK_CODE` with the actual values for your printer.
 
 3. **Restart Home Assistant**
 
@@ -67,8 +68,8 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
 
 After installation, the FlashForge Adventurer 5M PRO integration will appear in the Home Assistant UI. You can manage your 3D printer through the available entities, including sensors and camera feed.
 
-- Monitor Status: Check the printer''s current status, temperature readings, and more.
-- Camera Feed: View a live stream from the printer''s webcam directly within Home Assistant.
+- Monitor Status: Check the printer's current status, temperature readings, and more.
+- Camera Feed: View a live stream from the printer's webcam directly within Home Assistant.
 
 ## Troubleshooting
 
@@ -79,29 +80,35 @@ If you encounter issues with the camera feed, such as:
 Ensure that:
 
 **Stream URL Configuration:**
-  - The cameraStreamUrl provided by the printer is correct.
-  - If cameraStreamUrl is not available, the fallback URL (http://YOUR_PRINTER_IP:8080/?action=stream) is accessible.
+
+- The cameraStreamUrl provided by the printer is correct.
+- If cameraStreamUrl is not available, the fallback URL (http://YOUR_PRINTER_IP:8080/?action=stream) is accessible.
 
 **Network Configuration:**
+
 - Home Assistant and the printer are on the same network segment.
 - Necessary ports (e.g., 8080) are open and not blocked by firewalls.
 
 **Stream Accessibility:**
 Test the stream URL using a web browser:
+
 - Enter the stream URL, for example: `http://192.168.1.50:8080/?action=stream`
 
 **Home Assistant Logs:**
+
 - Check Settings > System > Logs for any related error messages.
 - Ensure that the integration is fetching data correctly without errors.
 
 ## Development and Testing
 
 ### Important Note
-This integration''s test suite is designed for local development only and requires access to a physical Flashforge Adventurer 5M printer. To protect printer credentials and ensure safe testing practices, all test files are excluded from the git repository.
+
+This integration's test suite is designed for local development only and requires access to a physical Flashforge Adventurer 5M printer. To protect printer credentials and ensure safe testing practices, all test files are excluded from the git repository.
 
 ### Local Development Setup
 
 1. **Clone and Setup**
+
    ```bash
    git clone https://github.com/yourusername/flashforge_adventurer5m
    cd flashforge_adventurer5m
@@ -109,11 +116,13 @@ This integration''s test suite is designed for local development only and requir
    ```
 
 2. **Install Dependencies**
+
    ```bash
    pip install -r requirements_test.txt
    ```
 
 3. **Test Documentation**
+
    ```bash
    cat tests/README.md  # Review testing guidelines
    ```
@@ -121,11 +130,13 @@ This integration''s test suite is designed for local development only and requir
 ### Test Data and Security
 
 The test suite uses mock data to protect sensitive information:
+
 - Test data files are git-ignored by default
 - Credentials are stored in local configuration only
 - Mock data generators are provided for test cases
 
 **Never include in repository:**
+
 - Real printer credentials
 - Captured printer responses
 - Network configuration details
@@ -134,16 +145,19 @@ The test suite uses mock data to protect sensitive information:
 ### Running Tests
 
 1. **Quick Tests**
+
    ```bash
    python scripts/run_test_suite.py --config quick
    ```
 
 2. **Generate Mock Data**
+
    ```bash
    python scripts/generate_test_data.py
    ```
 
 3. **Full Test Suite**
+
    ```bash
    python scripts/run_test_suite.py --config full
    ```
@@ -170,6 +184,7 @@ For detailed testing instructions, see [Local Testing Guide](tests/README.md).
 ### Testing Disclaimer
 
 The test suite is provided for development purposes only:
+
 - Always test with a development printer
 - Never test against production printers
 - Use caution when running tests that modify printer state
@@ -178,6 +193,7 @@ The test suite is provided for development purposes only:
 ## Contributing
 
 Contributions are welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Follow security guidelines
