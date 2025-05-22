@@ -1,18 +1,49 @@
 """
 Config flow for Flashforge Adventurer 5M PRO integration.
+
+This module handles the setup flow for the integration, including:
+- Input validation
+- Connection testing
+- Authentication verification
+- Configuration persistence
 """
 import logging
 import voluptuous as vol
 import aiohttp
 import json
+import re
+import ipaddress
+import asyncio
+from typing import Any, Dict, Optional
 
 from homeassistant import config_entries, exceptions
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_PORT,
+    DEFAULT_HOST,
+    TIMEOUT_CONNECTION_TEST,
+    MAX_RETRIES,
+    RETRY_DELAY,
+    ENDPOINT_DETAIL,
+    REQUIRED_RESPONSE_FIELDS,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+# Configuration schemas
+CONFIG_SCHEMA = vol.Schema({
+    vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
+    vol.Required("serial_number"): str,
+    vol.Required("check_code"): str,
+    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+        vol.Coerce(int), vol.Range(min=5, max=300)
+    ),
+})
 
 
 class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -20,65 +51,163 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    def __init__(self):
+        """Initialize the config flow."""
+        self._errors: Dict[str, str] = {}
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> FlashforgeOptionsFlow:
+        """Create the options flow."""
+        return FlashforgeOptionsFlow(config_entry)
+
+    def _validate_ip_address(self, host: str) -> Optional[str]:
         """
-        This is the first step of the config flow, shown when the user chooses
-        to add your integration from the UI.
+        Validate the IP address or hostname format.
+        
+        Args:
+            host: The IP address or hostname to validate
+            
+        Returns:
+            Error message if validation fails, None if validation passes
         """
-        errors: dict[str, str] = {}
+        # Check if it's a valid IP address
+        try:
+            ipaddress.ip_address(host)
+            return None
+        except ValueError:
+            # Not an IP address, check if it's a valid hostname
+            if not re.match(r'^[a-zA-Z0-9\-\.]+$', host):
+                return "invalid_host_format"
+        return None
 
-        if user_input is not None:
-            # 1) Validate the user input
-            host = user_input["host"]
-            serial_number = user_input["serial_number"]
-            check_code = user_input["check_code"]
+    def _validate_serial_number(self, serial_number: str) -> Optional[str]:
+        """
+        Validate the serial number format.
+        
+        Args:
+            serial_number: The serial number to validate
+            
+        Returns:
+            Error message if validation fails, None if validation passes
+        """
+        # Ensure serial number has at least minimum length
+        if len(serial_number) < 6:
+            return "invalid_serial_format"
+        return None
 
-            # Optional: check if this printer is already configured
-            await self.async_set_unique_id(f"flashforge_{serial_number}")
-            self._abort_if_unique_id_configured()
+    def _validate_check_code(self, check_code: str) -> Optional[str]:
+        """
+        Validate the check code format.
+        
+        Args:
+            check_code: The check code to validate
+            
+        Returns:
+            Error message if validation fails, None if validation passes
+        """
+        # Ensure check code has at least minimum length
+        if len(check_code) < 4:
+            return "invalid_check_code_format"
+        return None
 
-            # 2) You can do a connection test here if you want
+    async def _validate_input(self, user_input: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Validate the user input allows us to connect to the printer.
+        
+        Args:
+            user_input: Dictionary of user provided configuration options
+            
+        Returns:
+            Dictionary of validation errors, empty if validation passes
+        """
+        errors = {}
+
+        # Validate IP address/hostname format
+        host_error = self._validate_ip_address(user_input[CONF_HOST])
+        if host_error:
+            errors[CONF_HOST] = host_error
+
+        # Validate serial number format
+        serial_error = self._validate_serial_number(user_input["serial_number"])
+        if serial_error:
+            errors["serial_number"] = serial_error
+
+        # Validate check code format
+        check_code_error = self._validate_check_code(user_input["check_code"])
+        if check_code_error:
+            errors["check_code"] = check_code_error
+
+        # If basic validation passes, test the connection
+        if not errors:
             try:
                 await self._test_printer_connection(
                     self.hass,
-                    host,
-                    serial_number,
-                    check_code,
+                    user_input[CONF_HOST],
+                    user_input["serial_number"],
+                    user_input["check_code"],
                 )
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+            except ConnectionTimeout:
+                errors["base"] = "connection_timeout"
+            except Exception:
+                _LOGGER.exception("Unexpected exception during connection test")
                 errors["base"] = "unknown"
+
+        return errors
+
+    async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None) -> FlowResult:
+        """
+        Handle the initial step of the config flow.
+        
+        This step collects the printer's connection details and validates them.
+        
+        Args:
+            user_input: Dictionary of user provided configuration options
             
-            # 3) If no errors, create the config entry
+        Returns:
+            FlowResult directing the config flow
+        """
+        errors: Dict[str, str] = {}
+
+        if user_input is not None:
+            # Validate the user input
+            errors = await self._validate_input(user_input)
+
             if not errors:
+                # Check if this printer is already configured
+                await self.async_set_unique_id(f"flashforge_{user_input['serial_number']}")
+                self._abort_if_unique_id_configured()
+
+                # Create the config entry
                 return self.async_create_entry(
-                    title=f"Flashforge {serial_number}",  # Shown in HA UI
+                    title=f"Flashforge {user_input['serial_number']}",
                     data={
-                        "host": host,
-                        "serial_number": serial_number,
-                        "check_code": check_code,
+                        CONF_HOST: user_input[CONF_HOST],
+                        "serial_number": user_input["serial_number"],
+                        "check_code": user_input["check_code"],
+                        CONF_SCAN_INTERVAL: user_input.get(
+                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                        ),
                     },
                 )
 
-        # Show the form if no user input yet or on errors
-        data_schema = vol.Schema(
-            {
-                vol.Required("host"): str,
-                vol.Required("serial_number"): str,
-                vol.Required("check_code"): str,
-            }
-        )
-
+        # Show the configuration form
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
+            data_schema=CONFIG_SCHEMA,
             errors=errors,
+            description_placeholders={
+                "default_scan_interval": str(DEFAULT_SCAN_INTERVAL),
+                "min_scan_interval": "5",
+                "max_scan_interval": "300",
+            },
         )
-
+    
     async def _test_printer_connection(
         self,
         hass: HomeAssistant,
@@ -87,28 +216,85 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         check_code: str
     ) -> None:
         """
-        Verify the printer is reachable and the check_code is valid.
-        Raise exceptions on failure.
+        Verify the printer is reachable and credentials are valid.
+        
+        This method attempts to connect to the printer and validate the response,
+        implementing retry logic for transient failures.
+        
+        Args:
+            hass: HomeAssistant instance
+            host: Printer's IP address or hostname
+            serial_number: Printer's serial number
+            check_code: Printer's check code
+            
+        Raises:
+            CannotConnect: If the printer cannot be reached
+            InvalidAuth: If authentication fails
+            ConnectionTimeout: If the connection times out
+            Exception: For other unexpected errors
         """
-        url = f"http://{host}:8898/detail"
+        url = f"http://{host}:{DEFAULT_PORT}{ENDPOINT_DETAIL}"
         payload = {
             "serialNumber": serial_number,
             "checkCode": check_code
         }
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, timeout=10) as resp:
-                    resp.raise_for_status()
-                    text_data = await resp.text()
+        for attempt in range(MAX_RETRIES):
+            try:
+                # Set a timeout for the request
+                timeout_seconds = TIMEOUT_CONNECTION_TEST
+                
+                async with aiohttp.ClientSession() as session:
                     try:
-                        data = json.loads(text_data)
-                        if "detail" not in data:
-                            raise InvalidAuth
-                    except json.JSONDecodeError:
-                        raise InvalidAuth
-        except aiohttp.ClientError as e:
-            raise CannotConnect from e
+                        # Use asyncio.wait_for to implement the timeout
+                        async with asyncio.timeout(timeout_seconds):
+                            async with session.post(url, json=payload) as resp:
+                                if resp.status in (401, 403):
+                                    _LOGGER.error("Authentication failed with status: %s", resp.status)
+                                    raise InvalidAuth("Authentication failed")
+                                
+                                resp.raise_for_status()
+                                text_data = await resp.text()
+                                
+                                try:
+                                    data = json.loads(text_data)
+                                except json.JSONDecodeError as e:
+                                    _LOGGER.error("Invalid JSON response: %s", e)
+                                    raise InvalidAuth(f"Invalid response format: {e}")
+
+                                # Validate response structure
+                                if not all(field in data for field in REQUIRED_RESPONSE_FIELDS):
+                                    _LOGGER.error("Invalid response structure, missing required fields")
+                                    raise InvalidAuth("Invalid response structure")
+
+                                # Check for error code in response
+                                if data.get("code") != 0:
+                                    error_msg = data.get("message", "Unknown error")
+                                    _LOGGER.error("Printer returned error: %s", error_msg)
+                                    raise InvalidAuth(f"Printer returned error: {error_msg}")
+
+                                # All checks passed, connection successful
+                                _LOGGER.info("Connection test successful")
+                                return
+                    except asyncio.TimeoutError:
+                        _LOGGER.warning("Connection timed out (attempt %d of %d)", 
+                                        attempt + 1, MAX_RETRIES)
+                        if attempt == MAX_RETRIES - 1:
+                            raise ConnectionTimeout("Connection to printer timed out")
+                        
+            except aiohttp.ClientError as e:
+                _LOGGER.warning("Connection error (attempt %d of %d): %s", 
+                                attempt + 1, MAX_RETRIES, str(e))
+                if attempt == MAX_RETRIES - 1:
+                    raise CannotConnect(f"Connection failed: {e}")
+
+            # If we got here, we need to retry
+            if attempt < MAX_RETRIES - 1:
+                _LOGGER.info("Retrying connection in %s seconds", RETRY_DELAY)
+                await asyncio.sleep(RETRY_DELAY)
+
+        # Should never reach here due to the exception in the last attempt
+        raise CannotConnect("Failed to connect after all retry attempts")
 
 
 class CannotConnect(exceptions.HomeAssistantError):
@@ -117,3 +303,55 @@ class CannotConnect(exceptions.HomeAssistantError):
 
 class InvalidAuth(exceptions.HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+
+class ConnectionTimeout(exceptions.HomeAssistantError):
+    """Error to indicate the connection timed out."""
+
+
+class FlashforgeOptionsFlow(config_entries.OptionsFlow):
+    """Handle Flashforge options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: Dict[str, Any] = None
+    ) -> FlowResult:
+        """Manage options."""
+        errors: Dict[str, str] = {}
+
+        if user_input is not None:
+            # Validate input
+            if user_input.get(CONF_SCAN_INTERVAL) < 5 or user_input.get(CONF_SCAN_INTERVAL) > 300:
+                errors[CONF_SCAN_INTERVAL] = "invalid_scan_interval"
+            else:
+                # Update the options
+                return self.async_create_entry(title="", data=user_input)
+
+        # Use current values as defaults
+        current_scan_interval = self.config_entry.options.get(
+            CONF_SCAN_INTERVAL, 
+            self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        )
+
+        # Build the options schema
+        options_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL, 
+                    default=current_scan_interval
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            errors=errors,
+            description_placeholders={
+                "min_scan_interval": "5",
+                "max_scan_interval": "300",
+            },
+        )

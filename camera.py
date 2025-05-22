@@ -1,8 +1,8 @@
 import logging
 from typing import Callable
 
-from homeassistant import config_entries, core
-from homeassistant.components.mjpeg.camera import MjpegCamera
+from homeassistant import config_entries, core # type: ignore
+from homeassistant.components.mjpeg.camera import MjpegCamera # type: ignore
 
 from .const import DOMAIN
 
@@ -71,15 +71,9 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
             still_image_url=None
         )
         self._attr_unique_id = unique_id
+        self._attr_is_streaming = True  # Always streaming for MJPEG camera
 
-    @property
-    def device_info(self):
-        """
-        Group the camera entity under the same device as sensors,
-        using the coordinator's serial number.
-        """
-        if not self._coordinator.data:
-            return None  # Or provide default values
+    # Set device info in __init__ to match Home Assistant's expectations
 
         fw = self._coordinator.data.get("detail", {}).get("firmwareVersion")
 
@@ -91,16 +85,10 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
             "sw_version": fw,
         }
 
-    @property
-    def is_streaming(self):
-        """MjpegCamera sets up a continuous stream, so this is True."""
-        return True
-
-    @property
-    def stream_source(self) -> str | None:
+    async def stream_source(self) -> str:
         """
         Return the camera stream URL.
-        This property is used by HA to access the live stream.
+        This method is used by HA to access the live stream.
         """
         detail = self._coordinator.data.get("detail", {})
         camera_stream_url = detail.get("cameraStreamUrl")

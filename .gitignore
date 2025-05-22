@@ -1,2 +1,43 @@
-.vscode/settings.json
-__pycache__
+# Test files and directories (local testing only)
+tests/
+test_reports/
+coverage.xml
+.coverage
+htmlcov/
+pytest.ini
+.pytest_cache/
+scripts/run_tests.py
+scripts/run_test_suite.py
+scripts/analyze_coverage.py
+scripts/analyze_test_performance.py
+scripts/generate_test_data.py
+scripts/validate_test_env.py
+TESTING.md
+requirements_test.txt
+
+# IDE and editor files
+.vscode/
+.idea/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+
+# Environment files
+venv/
+.env
+.venv
+venv311
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log

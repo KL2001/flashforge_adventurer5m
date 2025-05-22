@@ -1,18 +1,46 @@
+# Service definitions for Flashforge Adventurer 5M PRO integration
+
 pause_print:
-  description: "Pause the current print job."
+  name: Pause Print
+  description: >-
+    Pause the current print job. This will halt the printing process while 
+    maintaining temperatures and printer state. The print can be resumed later.
   fields: {}
 
 start_print:
-  description: "Start a new print job."
+  name: Start Print
+  description: >-
+    Start a new print job using the specified G-code file. Ensure the file path
+    is accessible to the printer and the printer is in a ready state.
   fields:
     file_path:
-      description: "Path to the G-code file to print."
-      example: "/path/to/file.gcode"
+      name: File Path
+      description: >-
+        Path to the G-code file on the printer''s storage. Must be a valid path
+        that the printer can access.
+      required: true
+      example: "/PrintFiles/model.gcode"
+      selector:
+        text:
 
 cancel_print:
-  description: "Cancel the current print job."
+  name: Cancel Print
+  description: >-
+    Cancel the current print job. This will stop the print entirely and return
+    the printer to an idle state. This action cannot be undone.
   fields: {}
 
 toggle_light:
-  description: "Toggle the printer's light."
-  fields: {}
+  name: Toggle Light
+  description: >-
+    Toggle the printer''s built-in LED light on or off.
+  fields:
+    state:
+      name: State
+      description: >-
+        The desired state of the light. Set to true to turn the light on,
+        false to turn it off.
+      required: true
+      example: true
+      selector:
+        boolean:

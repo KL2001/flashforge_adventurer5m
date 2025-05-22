@@ -39,7 +39,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     # Forward setup to sensor and camera platforms using the updated method
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "camera"])
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "camera", "binary_sensor"])
 
     # Register services
     async def handle_pause_print(call):
@@ -80,7 +80,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Handle removal/unloading of a config entry.
     """
     unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, ["sensor", "camera"]
+        entry, ["sensor", "camera", "binary_sensor"]
     )
 
     if unload_ok:

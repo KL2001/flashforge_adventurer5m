@@ -1,6 +1,6 @@
 import logging
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.const import (
+from homeassistant.components.sensor import SensorEntity # type: ignore
+from homeassistant.const import ( # type: ignore
     UnitOfTemperature,
     UnitOfMass,
     PERCENTAGE
@@ -20,6 +20,9 @@ class PrinterDefinition:
 # Example mixin that sets a base name/unique_id
 # Adjust to suit your actual usage.
 class FlashforgeAdventurerCommonPropertiesMixin:
+    def __init__(self, coordinator):
+        self.coordinator = coordinator
+
     @property
     def name(self) -> str:
         return "Flashforge Adventurer 5M PRO"
@@ -208,25 +211,18 @@ class FlashforgeSensor(SensorEntity):
         self._is_top_level = is_top_level
         self._unit = unit
         self._is_percentage = is_percentage
+        self._attr_should_poll = False  # Do not poll, rely on coordinator
+        # Set initial availability
+        self._attr_available = getattr(self.coordinator, "last_update_success", True)
         # Build a unique ID using serial_number
         unique_part = attribute.replace("_", "").replace(" ", "").lower()
         self._attr_unique_id = f"flashforge_{self.coordinator.serial_number}_{unique_part}"
 
-    @property
-    def native_unit_of_measurement(self):
-        if self._is_percentage:
-            return PERCENTAGE
-        return self._unit
-
-    @property
-    def device_info(self):
-        """Group these sensors under one device."""
-        if not self.coordinator.data:
-            return None  # Or provide default values
-
-        fw = self.coordinator.data.get("detail", {}).get("firmwareVersion")
-
-        return {
+        # Set device info for Home Assistant device registry
+        fw = None
+        if self.coordinator.data:
+            fw = self.coordinator.data.get("detail", {}).get("firmwareVersion")
+        self._attr_device_info = {
             "identifiers": {(DOMAIN, self.coordinator.serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
@@ -234,46 +230,33 @@ class FlashforgeSensor(SensorEntity):
             "sw_version": fw,
         }
 
-    @property
-    def should_poll(self):
-        """We rely on the DataUpdateCoordinator; no direct polling."""
-        return False
+    from homeassistant.helpers.entity import Entity  # Add this import at the top if not present
+    from homeassistant.helpers.entity import Entity
+    from homeassistant.helpers.typing import StateType
+    # device_info property is handled by the base class via _attr_device_info
+    # Remove the available property; set _attr_available in the constructor and update it in async_update
 
-    @property
-    def available(self):
-        """Available if last update from coordinator was successful."""
-        return self.coordinator.last_update_success
-
-    @property
-    def native_value(self):
-        """Extract the relevant data from the coordinator's last fetch."""
-        data = self.coordinator.data
-        if not data:
-            return None
-
-        if self._is_top_level:
-            # For top-level keys like "code" or "message"
-            val = data.get(self._attribute)
-        else:
-            # For detail.* fields
-            detail = data.get("detail", {})
-            val = detail.get(self._attribute)
-
-        if val is None:
-            return None
-
-        if self._is_percentage:
-            # Convert 0..1 -> 0..100%
-            return round(float(val) * 100, 1)
-
-        return val
-
-    async def async_update(self):
-        """If forced by HA, we trigger a coordinator refresh."""
-        await self.coordinator.async_request_refresh()
+    # Remove the native_value property and rely on _attr_native_value.
 
     async def async_added_to_hass(self):
         """Register for coordinator updates."""
         self.async_on_remove(
             self.coordinator.async_add_listener(self.async_write_ha_state)
         )
+    async def async_update(self):
+        """If forced by HA, we trigger a coordinator refresh and update availability."""
+        await self.coordinator.async_request_refresh()
+        self._attr_available = getattr(self.coordinator, "last_update_success", True)
+
+        # Update _attr_native_value based on the latest coordinator data
+        data = self.coordinator.data
+        val = None
+        if data:
+            if self._is_top_level:
+                val = data.get(self._attribute)
+            else:
+                detail = data.get("detail", {})
+                val = detail.get(self._attribute)
+            if val is not None and self._is_percentage:
+                val = round(float(val) * 100, 1)
+        self._attr_native_value = val

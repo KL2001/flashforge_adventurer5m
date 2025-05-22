@@ -1,0 +1,151 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Flashforge Adventurer 5M PRO",
+        "description": "Set up your Flashforge Adventurer 5M PRO 3D printer for monitoring and control through Home Assistant.\n\nYou will need the printer's IP address, serial number, and check code to complete the setup.",
+        "data": {
+          "host": "IP Address or Hostname",
+          "serial_number": "Serial Number",
+          "check_code": "Check Code",
+          "scan_interval": "Scan Interval (seconds)"
+        },
+        "data_description": {
+          "host": "The IP address or hostname of your printer on the network.",
+          "serial_number": "The serial number of your printer, found on the information screen or in the mobile app.",
+          "check_code": "The check code for authentication, found in the printer settings.",
+          "scan_interval": "How often Home Assistant should poll the printer for updates (5-300 seconds)."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the printer. Please check the network connection and that the printer is powered on.",
+      "invalid_auth": "Invalid authentication credentials. Please check your serial number and check code.",
+      "connection_timeout": "Connection to the printer timed out. Please check that the printer is online and reachable.",
+      "unknown": "An unexpected error occurred. Please check the logs for more details.",
+      "invalid_host_format": "Invalid IP address or hostname format.",
+      "invalid_serial_format": "Invalid serial number format. Should be at least 6 characters.",
+      "invalid_check_code_format": "Invalid check code format. Should be at least 4 characters."
+    },
+    "abort": {
+      "already_configured": "This printer is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Flashforge Adventurer 5M PRO Options",
+        "description": "Adjust settings for your Flashforge Adventurer 5M PRO printer.",
+        "data": {
+          "scan_interval": "Update Interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to fetch new data from the printer. Lower values provide more frequent updates but may increase network traffic. Recommended: 10-30 seconds."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "printing": {
+        "name": "Printing"
+      },
+      "door_open": {
+        "name": "Door Open"
+      },
+      "light_on": {
+        "name": "Light On"
+      },
+      "connected": {
+        "name": "Connected"
+      },
+      "error": {
+        "name": "Error"
+      }
+    },
+    "sensor": {
+      "code": {
+        "name": "Status Code"
+      },
+      "message": {
+        "name": "Status Message"
+      },
+      "status": {
+        "name": "Status"
+      },
+      "auto_shutdown": {
+        "name": "Auto Shutdown"
+      },
+      "auto_shutdown_time": {
+        "name": "Auto Shutdown Time"
+      },
+      "door_status": {
+        "name": "Door Status"
+      },
+      "light_status": {
+        "name": "Light Status"
+      },
+      "ip_addr": {
+        "name": "IP Address"
+      },
+      "firmware_version": {
+        "name": "Firmware Version"
+      },
+      "chamber_temp": {
+        "name": "Chamber Temperature"
+      },
+      "plate_temp": {
+        "name": "Platform Temperature"
+      },
+      "left_temp": {
+        "name": "Left Nozzle Temperature"
+      },
+      "right_temp": {
+        "name": "Right Nozzle Temperature"
+      },
+      "print_progress": {
+        "name": "Print Progress"
+      },
+      "print_duration": {
+        "name": "Print Duration"
+      },
+      "estimated_time": {
+        "name": "Estimated Time Remaining"
+      },
+      "error_code": {
+        "name": "Error Code"
+      }
+    }
+  },
+  "services": {
+    "pause_print": {
+      "name": "Pause Print",
+      "description": "Pause the current print job on the Flashforge printer."
+    },
+    "start_print": {
+      "name": "Start Print",
+      "description": "Start a new print job on the Flashforge printer.",
+      "fields": {
+        "file_path": {
+          "name": "File Path",
+          "description": "Path to the G-code file on the printer's storage system."
+        }
+      }
+    },
+    "cancel_print": {
+      "name": "Cancel Print",
+      "description": "Cancel the current print job on the Flashforge printer."
+    },
+    "toggle_light": {
+      "name": "Toggle Light",
+      "description": "Toggle the printer's built-in LED light on or off.",
+      "fields": {
+        "state": {
+          "name": "State",
+          "description": "Set to true to turn the light on, false to turn it off."
+        }
+      }
+    }
+  }
+}
+
