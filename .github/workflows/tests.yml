@@ -137,7 +137,7 @@ jobs:
   stress:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == "schedule"  # Only run stress tests on schedule
+    if: github.event_name == 'schedule'  # Only run stress tests on schedule
     
     steps:
     - uses: actions/checkout@v3
