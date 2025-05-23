@@ -7,22 +7,23 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
 - **Monitor Printer Status**
   - View real-time status of the printer.
   - Track print progress and details.
-
 - **View Camera Feed**
   - Access live camera feed from the printer's webcam.
+- **Control Printer Operations**
+  - Start new print jobs by specifying the file path on the printer.
+  - Pause active print jobs.
+  - Cancel ongoing print jobs.
+  - Toggle the printer's built-in LED light.
 
 ## Planned Features
 
 - **Print Notifications**
   - Receive alerts on print completion.
 
-- **Print Control**
-  - Start, pause, and stop prints directly from Home Assistant.
-
 ## Requirements
 
 - **Home Assistant** 2023.10 or later
-- **FlashForge Adventurer 5M 3D Printer**
+- **FlashForge Adventurer 5M Pro 3D Printer**
 - **Network Connection** to the printer
 
 ## Installation
@@ -37,28 +38,15 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
 
 2. **Configure Integration**
 
-   You can add the integration via the Home Assistant UI or manually via `configuration.yaml`.
+   This integration is configured via the Home Assistant UI after installation.
 
    a. **Using Home Assistant UI**
       - Navigate to `Settings` > `Devices & Services` > `Add Integration`.
-      - Search for `FlashForge Adventurer 5M PRO`.
+      - Search for `FlashForge Adventurer 5M Pro`.
       - Enter the required details:
         - **Host**: IP address or hostname of your printer (e.g., 192.168.1.50).
-        - **Serial Number**: Serial number of your printer.
+        - **Serial Number**: Serial number of your printer (often includes an 'SN' prefix, which should be included if displayed by your printer).
         - **Check Code**: Authentication code for your printer.
-
-    b. **Manual Configuration**
-
-- Add the following to your `configuration.yaml`:
-
-```yaml
-flashforge_adventurer5m:
-  host: YOUR_PRINTER_IP
-  serial_number: YOUR_PRINTER_SERIAL_NUMBER #including the prefix "SN"
-  check_code: YOUR_PRINTER_CHECK_CODE
-```
-
-Replace `YOUR_PRINTER_IP`, `YOUR_PRINTER_SERIAL_NUMBER`, and `YOUR_PRINTER_CHECK_CODE` with the actual values for your printer.
 
 3. **Restart Home Assistant**
 
@@ -66,10 +54,11 @@ Replace `YOUR_PRINTER_IP`, `YOUR_PRINTER_SERIAL_NUMBER`, and `YOUR_PRINTER_CHECK
 
 ## Usage
 
-After installation, the FlashForge Adventurer 5M PRO integration will appear in the Home Assistant UI. You can manage your 3D printer through the available entities, including sensors and camera feed.
+After installation, the FlashForge Adventurer 5M Pro integration will appear in the Home Assistant UI. You can manage your 3D printer through the available entities, including sensors and camera feed.
 
-- Monitor Status: Check the printer's current status, temperature readings, and more.
-- Camera Feed: View a live stream from the printer's webcam directly within Home Assistant.
+- **Monitor Status:** Check the printer's current status, temperature readings, and more.
+- **Camera Feed:** View a live stream from the printer's webcam directly within Home Assistant.
+- **Printer Controls:** Use Home Assistant services to start, pause, cancel prints, and toggle the printer's LED light.
 
 ## Troubleshooting
 
@@ -103,7 +92,7 @@ Test the stream URL using a web browser:
 
 ### Important Note
 
-This integration's test suite is designed for local development only and requires access to a physical Flashforge Adventurer 5M printer. To protect printer credentials and ensure safe testing practices, all test files are excluded from the git repository.
+This integration's test suite is designed for local development only and requires access to a physical FlashForge Adventurer 5M Pro printer. To protect printer credentials and ensure safe testing practices, all test files are excluded from the git repository.
 
 ### Local Development Setup
 

@@ -1,10 +1,12 @@
 import logging
 from typing import Callable
 
-from homeassistant import config_entries, core # type: ignore
-from homeassistant.components.mjpeg.camera import MjpegCamera # type: ignore
+from homeassistant import config_entries, core  # type: ignore
+from homeassistant.components.mjpeg.camera import MjpegCamera  # type: ignore
+from homeassistant.helpers.update_coordinator import CoordinatorEntity  # type: ignore
 
 from .const import DOMAIN
+from .coordinator import FlashforgeDataUpdateCoordinator  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,12 +18,9 @@ async def async_setup_entry(
 ) -> bool:
     """
     Set up camera entities for the Flashforge Adventurer 5M PRO via a config entry.
-
-    Option B: The camera only needs the coordinator to fetch the stream URL.
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
-    # Create camera entities
     cameras = [
         FlashforgeAdventurer5MCamera(coordinator),
     ]
@@ -30,75 +29,62 @@ async def async_setup_entry(
     return True
 
 
-class FlashforgeAdventurer5MCamera(MjpegCamera):
+class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
     """
     A camera entity for the Flashforge Adventurer 5M PRO, using the MjpegCamera base class.
     This implementation assumes that the camera stream URL is available via the coordinator's data.
     """
 
-    def __init__(self, coordinator):
-        """
-        Initialize the MJPEG camera entity.
+    def __init__(self, coordinator: FlashforgeDataUpdateCoordinator):
+        CoordinatorEntity.__init__(self, coordinator)
+        self.coordinator = coordinator
 
-        :param coordinator: The DataUpdateCoordinator that holds printer data (including cameraStreamUrl).
-        """
-        self._coordinator = coordinator
+        detail = self.coordinator.data.get("detail", {}) if self.coordinator.data else {}
+        serial_number = getattr(self.coordinator, "serial_number", "unknown")
+        name = "Flashforge Adventurer 5M PRO Camera"
 
-        # Extract necessary details from coordinator data
-        detail = coordinator.data.get("detail", {})
-        serial_number = coordinator.serial_number  # Use serial_number from coordinator
-        unique_id = f"flashforge_{serial_number}_camera"
-        name = f"Flashforge Adventurer 5M PRO Camera"
-
-        # Fetch the stream URL from the coordinator data
+        # Determine initial stream URL
         stream_url = detail.get("cameraStreamUrl")
-
         if not stream_url:
-            # Use fallback if 'cameraStreamUrl' is missing
             ip_addr = detail.get("ipAddr")
             if ip_addr:
                 stream_url = f"http://{ip_addr}:8080/?action=stream"
-                _LOGGER.debug(f"'cameraStreamUrl' missing, using fallback URL: {stream_url}")
+                _LOGGER.debug("'cameraStreamUrl' missing, using fallback URL: %s", stream_url)
             else:
                 _LOGGER.warning(
                     "Coordinator does not have 'ipAddr' and 'cameraStreamUrl' is missing. Using dummy URL."
                 )
                 stream_url = "http://0.0.0.0/"
 
-        super().__init__(
+        MjpegCamera.__init__(
+            self,
             name=name,
             mjpeg_url=stream_url,
             still_image_url=None
         )
-        self._attr_unique_id = unique_id
-        self._attr_is_streaming = True  # Always streaming for MJPEG camera
+        self._attr_unique_id = f"flashforge_{serial_number}_camera"
+        self._attr_is_streaming = True
 
-    # Set device info in __init__ to match Home Assistant's expectations
-
-        fw = self._coordinator.data.get("detail", {}).get("firmwareVersion")
-
-        return {
-            "identifiers": {(DOMAIN, self._coordinator.serial_number)},  # Ensure this matches sensor.py
+        # CRITICAL: Assign device_info, do NOT return it
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
-            "model": "Adventurer 5M PRO",
-            "sw_version": fw,
+            "model": detail.get("model", "Adventurer 5M PRO"),
+            "sw_version": detail.get("firmwareVersion"),
         }
 
-    async def stream_source(self) -> str:
-        """
-        Return the camera stream URL.
-        This method is used by HA to access the live stream.
-        """
-        detail = self._coordinator.data.get("detail", {})
+    @property
+    def stream_source(self) -> str | None:
+        """Return the camera stream URL for Home Assistant."""
+        detail = self.coordinator.data.get("detail", {}) if self.coordinator.data else {}
         camera_stream_url = detail.get("cameraStreamUrl")
         ip_addr = detail.get("ipAddr")
-
         if camera_stream_url:
             return camera_stream_url
         elif ip_addr:
             fallback_url = f"http://{ip_addr}:8080/?action=stream"
-            _LOGGER.debug(f"No 'cameraStreamUrl', using fallback URL: {fallback_url}")
+            _LOGGER.debug("No 'cameraStreamUrl', using fallback URL: %s", fallback_url)
             return fallback_url
         else:
             _LOGGER.warning(
@@ -106,22 +92,31 @@ class FlashforgeAdventurer5MCamera(MjpegCamera):
             )
             return "http://0.0.0.0/"
 
-    async def async_added_to_hass(self) -> None:
-        """
-        Register for coordinator updates to handle dynamic changes in the stream URL.
-        """
-        self.async_on_remove(
-            self._coordinator.async_add_listener(self._update_stream_url)
+    @property
+    def available(self) -> bool:
+        """Return True if the camera is available."""
+        return (
+            self.coordinator.last_update_success
+            and self._mjpeg_url is not None
+            and self._mjpeg_url != "http://0.0.0.0/"
         )
 
-    def _update_stream_url(self) -> None:
-        """
-        If the coordinator fetches a new 'cameraStreamUrl', update our mjpeg_url.
-        Then call self.async_write_ha_state() to refresh the camera entity.
-        """
+    def _handle_coordinator_update(self) -> None:
+        """Update stream URL and device info if coordinator data changes."""
         new_url = self.stream_source
-
         if new_url and new_url != self._mjpeg_url:
             _LOGGER.debug("Updating camera stream URL to: %s", new_url)
             self._mjpeg_url = new_url
-            self.async_write_ha_state()
+        # Optionally update sw_version if it has changed
+        fw_version = self.coordinator.data.get("detail", {}).get("firmwareVersion")
+        if fw_version and self._attr_device_info.get("sw_version") != fw_version:
+            self._attr_device_info["sw_version"] = fw_version
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register for coordinator updates and update state on add."""
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+        )
