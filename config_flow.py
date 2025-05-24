@@ -46,6 +46,67 @@ CONFIG_SCHEMA = vol.Schema({
 })
 
 
+# Custom exception classes
+class CannotConnect(exceptions.HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(exceptions.HomeAssistantError):
+    """Error to indicate there is invalid auth."""
+
+
+class ConnectionTimeout(exceptions.HomeAssistantError):
+    """Error to indicate the connection timed out."""
+
+
+class FlashforgeOptionsFlow(config_entries.OptionsFlow):
+    """Handle Flashforge options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: Dict[str, Any] = None
+    ) -> FlowResult:
+        """Manage options."""
+        errors: Dict[str, str] = {}
+
+        if user_input is not None:
+            # Validate input
+            if user_input.get(CONF_SCAN_INTERVAL) < 5 or user_input.get(CONF_SCAN_INTERVAL) > 300:
+                errors[CONF_SCAN_INTERVAL] = "invalid_scan_interval"
+            else:
+                # Update the options
+                return self.async_create_entry(title="", data=user_input)
+
+        # Use current values as defaults
+        current_scan_interval = self.config_entry.options.get(
+            CONF_SCAN_INTERVAL, 
+            self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        )
+
+        # Build the options schema
+        options_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL, 
+                    default=current_scan_interval
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema,
+            errors=errors,
+            description_placeholders={
+                "min_scan_interval": "5",
+                "max_scan_interval": "300",
+            },
+        )
+
+
 class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for the Flashforge Adventurer 5M PRO integration."""
 
@@ -58,7 +119,7 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
-    ) -> FlashforgeOptionsFlow:
+    ) -> "FlashforgeOptionsFlow":  # Add quotes for forward reference
         """Create the options flow."""
         return FlashforgeOptionsFlow(config_entry)
 
@@ -295,63 +356,3 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Should never reach here due to the exception in the last attempt
         raise CannotConnect("Failed to connect after all retry attempts")
-
-
-class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(exceptions.HomeAssistantError):
-    """Error to indicate there is invalid auth."""
-
-
-class ConnectionTimeout(exceptions.HomeAssistantError):
-    """Error to indicate the connection timed out."""
-
-
-class FlashforgeOptionsFlow(config_entries.OptionsFlow):
-    """Handle Flashforge options."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
-    async def async_step_init(
-        self, user_input: Dict[str, Any] = None
-    ) -> FlowResult:
-        """Manage options."""
-        errors: Dict[str, str] = {}
-
-        if user_input is not None:
-            # Validate input
-            if user_input.get(CONF_SCAN_INTERVAL) < 5 or user_input.get(CONF_SCAN_INTERVAL) > 300:
-                errors[CONF_SCAN_INTERVAL] = "invalid_scan_interval"
-            else:
-                # Update the options
-                return self.async_create_entry(title="", data=user_input)
-
-        # Use current values as defaults
-        current_scan_interval = self.config_entry.options.get(
-            CONF_SCAN_INTERVAL, 
-            self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-        )
-
-        # Build the options schema
-        options_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_SCAN_INTERVAL, 
-                    default=current_scan_interval
-                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
-            }
-        )
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=options_schema,
-            errors=errors,
-            description_placeholders={
-                "min_scan_interval": "5",
-                "max_scan_interval": "300",
-            },
-        )
