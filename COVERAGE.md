@@ -24,7 +24,6 @@ This document verifies test coverage for critical components and identifies any 
 - [x] Error count property (test_coordinator_properties)
 - [x] Connection state property (test_coordinator_properties)
 - [x] Command history tracking (test_command_history_limit)
-- [x] Error history tracking (test_error_history_limit)
 
 ### Coverage Status: COMPLETE ✓
 

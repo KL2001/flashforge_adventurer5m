@@ -247,15 +247,6 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
         # Add error details for error sensor
         if self._error_sensor and self.is_on:
             attributes["error_code"] = detail.get("errorCode")
-            
-            # Add error history if available
-            if hasattr(self.coordinator, "error_history"):
-                # Just add the 3 most recent errors for brevity
-                recent_errors = self.coordinator.error_history[:3]
-                for i, error in enumerate(recent_errors):
-                    attributes[f"recent_error_{i+1}"] = (
-                        f"{error.get('timestamp', '')}: {error.get('message', '')}"
-                    )
         
         # Add print job details for printing sensor
         if self._is_printing_sensor and self.is_on:

@@ -4,9 +4,10 @@
   "version": "0.0.2",
   "documentation": "https://github.com/xombie21/flashforge_adventurer5m",
   "requirements": [
-    "requests>=2.31.0",
     "aiohttp"
   ],
   "codeowners": ["xombie21"],
-  "config_flow": true
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/xombie21/flashforge_adventurer5m/issues"
 }
