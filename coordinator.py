@@ -71,21 +71,13 @@ from .const import (
     CONNECTION_STATE_CONNECTED,
     CONNECTION_STATE_DISCONNECTED,
     CONNECTION_STATE_AUTHENTICATING,
-    REQUIRED_TOP_LEVEL_FIELDS,
+    REQUIRED_RESPONSE_FIELDS,
     REQUIRED_DETAIL_FIELDS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-COORDINATOR_API_ENDPOINTS = {
-    "detail": ENDPOINT_DETAIL,
-    "pause": ENDPOINT_PAUSE,
-    "start": ENDPOINT_START,
-    "cancel": ENDPOINT_CANCEL,
-    "command": ENDPOINT_COMMAND,
-}
 
 class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, host: str, serial_number: str, check_code: str, scan_interval: int = DEFAULT_SCAN_INTERVAL):
@@ -131,7 +123,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         return {}
 
     def _validate_response(self, data: dict[str, Any]) -> bool:
-        if not all(field in data for field in REQUIRED_TOP_LEVEL_FIELDS):
+        if not all(field in data for field in REQUIRED_RESPONSE_FIELDS):
             return False
         detail = data.get("detail", {})
         if not all(field in detail for field in REQUIRED_DETAIL_FIELDS):
@@ -158,8 +150,8 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
     async def pause_print(self):
         return await self._send_command(ENDPOINT_PAUSE)
 
-    async def start_print(self):
-        return await self._send_command(ENDPOINT_START)
+    async def start_print(self, file_path: str):
+        return await self._send_command(ENDPOINT_START, extra_payload={"file_path": file_path})
 
     async def cancel_print(self):
         return await self._send_command(ENDPOINT_CANCEL)
