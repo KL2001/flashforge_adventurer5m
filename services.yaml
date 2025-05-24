@@ -16,7 +16,7 @@ start_print:
     file_path:
       name: File Path
       description: >-
-        Path to the G-code file on the printer''s storage. Must be a valid path
+        Path to the G-code file on the printer's storage. Must be a valid path
         that the printer can access.
       required: true
       example: "/PrintFiles/model.gcode"
