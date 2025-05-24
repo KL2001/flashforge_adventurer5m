@@ -106,7 +106,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 async with aiohttp.ClientSession() as session:
                     async with session.post(url, json=payload, timeout=TIMEOUT_API_CALL) as resp:
                         resp.raise_for_status()
-                        data = await resp.json()
+                        data = await resp.json(content_type=None)
                         if self._validate_response(data):
                             self.connection_state = CONNECTION_STATE_CONNECTED
                             return data
