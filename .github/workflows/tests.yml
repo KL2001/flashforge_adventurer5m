@@ -37,15 +37,15 @@ jobs:
         
     - name: Check manifest
       run: |
-        python -m homeassistant.util.yaml.check_manifest custom_components/flashforge_adventurer5m/manifest.json
+        python -m homeassistant.util.yaml.check_manifest manifest.json
         
     - name: Check services
       run: |
-        python -m homeassistant.util.yaml.check_services custom_components/flashforge_adventurer5m/services.yaml
+        python -m homeassistant.util.yaml.check_services services.yaml
 
     - name: Check translations
       run: |
-        python -m homeassistant.util.yaml.check_translations custom_components/flashforge_adventurer5m/translations/en.json
+        python -m homeassistant.util.yaml.check_translations translations/en.json
 
   validate:
     runs-on: ubuntu-latest
