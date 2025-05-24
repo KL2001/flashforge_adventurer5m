@@ -27,7 +27,7 @@ SENSOR_DEFINITIONS = {
     "message": ("Status Message", None, None, None, True, False),
     # Detail section
     "status": ("Status", None, None, None, False, False),
-    "firmwareVersion": ("Firmware Version", None, SensorDeviceClass.FIRMWARE, None, False, False),
+    "firmwareVersion": ("Firmware Version", None, None, None, False, False),
     "chamberTemp": ("Chamber Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, False, False),
     "chamberTargetTemp": ("Chamber Target Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, False, False),
     "leftTemp": ("Left Nozzle Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, False, False),
