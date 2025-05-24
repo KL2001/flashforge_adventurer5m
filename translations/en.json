@@ -73,35 +73,32 @@
       "status": {
         "name": "Status"
       },
-      "auto_shutdown": {
-        "name": "Auto Shutdown"
-      },
-      "auto_shutdown_time": {
-        "name": "Auto Shutdown Time"
-      },
-      "door_status": {
-        "name": "Door Status"
-      },
-      "light_status": {
-        "name": "Light Status"
-      },
-      "ip_addr": {
-        "name": "IP Address"
-      },
       "firmware_version": {
         "name": "Firmware Version"
       },
-      "chamber_temp": {
+      "chamber_temperature": {
         "name": "Chamber Temperature"
       },
-      "plate_temp": {
-        "name": "Platform Temperature"
+      "chamber_target_temperature": {
+        "name": "Chamber Target Temperature"
       },
-      "left_temp": {
+      "left_nozzle_temperature": {
         "name": "Left Nozzle Temperature"
       },
-      "right_temp": {
+      "left_nozzle_target_temperature": {
+        "name": "Left Nozzle Target Temperature"
+      },
+      "right_nozzle_temperature": {
         "name": "Right Nozzle Temperature"
+      },
+      "right_nozzle_target_temperature": {
+        "name": "Right Nozzle Target Temperature"
+      },
+      "platform_temperature": {
+        "name": "Platform Temperature"
+      },
+      "platform_target_temperature": {
+        "name": "Platform Target Temperature"
       },
       "print_progress": {
         "name": "Print Progress"
@@ -109,11 +106,56 @@
       "print_duration": {
         "name": "Print Duration"
       },
-      "estimated_time": {
+      "estimated_time_remaining": {
         "name": "Estimated Time Remaining"
       },
-      "error_code": {
-        "name": "Error Code"
+      "cumulative_filament": {
+        "name": "Cumulative Filament"
+      },
+      "cumulative_print_time": {
+        "name": "Cumulative Print Time"
+      },
+      "fill_amount": {
+        "name": "Fill Amount"
+      },
+      "left_filament_type": {
+        "name": "Left Filament Type"
+      },
+      "right_filament_type": {
+        "name": "Right Filament Type"
+      },
+      "estimated_left_length": {
+        "name": "Estimated Left Length"
+      },
+      "estimated_left_weight": {
+        "name": "Estimated Left Weight"
+      },
+      "estimated_right_length": {
+        "name": "Estimated Right Length"
+      },
+      "estimated_right_weight": {
+        "name": "Estimated Right Weight"
+      },
+      "chamber_fan_speed": {
+        "name": "Chamber Fan Speed"
+      },
+      "cooling_fan_speed": {
+        "name": "Cooling Fan Speed"
+      },
+      "external_fan_status": {
+        "name": "External Fan Status"
+      },
+      "internal_fan_status": {
+        "name": "Internal Fan Status"
+      },
+      "tvoc": {
+        "name": "TVOC"
+      },
+      "remaining_disk_space": {
+        "name": "Remaining Disk Space"
+      },
+      "z_axis_compensation": {
+        "name": "Z Axis Compensation"
       }
     }
   },
