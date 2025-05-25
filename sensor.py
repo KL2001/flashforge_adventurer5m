@@ -124,8 +124,6 @@ class FlashforgeSensor(CoordinatorEntity, SensorEntity):
             "sw_version": fw,
         }
 
-        self._handle_coordinator_update()
-
     def _handle_coordinator_update(self) -> None:
         self._attr_available = self.coordinator.last_update_success
         raw_value = None
