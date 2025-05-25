@@ -56,6 +56,19 @@ SENSOR_DEFINITIONS = {
     "remainingDiskSpace": ("Remaining Disk Space", UnitOfInformation.GIGABYTES, SensorDeviceClass.DATA_SIZE, SensorStateClass.MEASUREMENT, False, False),
     "zAxisCompensation": ("Z Axis Compensation", UnitOfLength.MILLIMETERS, None, SensorStateClass.MEASUREMENT, False, False),
     # Add more as needed...
+    "autoShutdown": ("Auto Shutdown Status", None, None, None, False, False),
+    "autoShutdownTime": ("Auto Shutdown Time", UnitOfTime.MINUTES, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, False, False),
+    "currentPrintSpeed": ("Current Print Speed", "mm/s", SensorDeviceClass.SPEED, SensorStateClass.MEASUREMENT, False, False),
+    "flashRegisterCode": ("Flash Register Code", None, None, None, False, False),
+    "location": ("Location", None, None, None, False, False),
+    "macAddr": ("MAC Address", None, None, None, False, False),
+    "measure": ("Build Volume", None, None, None, False, False),
+    "nozzleCnt": ("Nozzle Count", None, None, SensorStateClass.MEASUREMENT, False, False),
+    "nozzleModel": ("Nozzle Model", None, None, None, False, False),
+    "nozzleStyle": ("Nozzle Style", None, None, SensorStateClass.MEASUREMENT, False, False),
+    "pid": ("Printer ID (PID)", None, None, None, False, False),
+    "polarRegisterCode": ("Polar Register Code", None, None, None, False, False),
+    "printSpeedAdjust": ("Print Speed Adjustment", PERCENTAGE, None, SensorStateClass.MEASUREMENT, False, True),
 }
 
 async def async_setup_entry(hass, entry, async_add_entities):
