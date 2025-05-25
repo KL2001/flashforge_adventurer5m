@@ -43,7 +43,7 @@ DOOR_OPEN = "OPEN"
 DOOR_CLOSED = "CLOSED"
 
 # Light status
-LIGHT_ON = "ON"
+LIGHT_ON = "open"
 LIGHT_OFF = "OFF"
 
 # Connection states
