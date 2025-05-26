@@ -62,6 +62,7 @@ from .const import (
     ENDPOINT_START,
     ENDPOINT_CANCEL,
     ENDPOINT_COMMAND,
+    ENDPOINT_JSON_RPC,
     TIMEOUT_API_CALL,
     TIMEOUT_COMMAND as COORDINATOR_COMMAND_TIMEOUT,
     MAX_RETRIES,
@@ -92,6 +93,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         self.check_code = check_code
         self.connection_state = CONNECTION_STATE_UNKNOWN
         self.data: dict[str, Any] = {}
+        self._sequence_id = 0
 
     async def _async_update_data(self):
         return await self._fetch_data()
@@ -130,6 +132,33 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             return False
         return True
 
+    async def _send_raw_json_command(self, endpoint: str, payload: dict):
+        url = f"http://{self.host}:{DEFAULT_PORT}{endpoint}"
+        # Note: This payload is sent as is, without serialNumber/checkCode wrapper
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=COORDINATOR_COMMAND_TIMEOUT) as resp:
+                    if resp.status == 200:
+                        # For raw commands, we might not always get JSON back,
+                        # or might not need to parse it.
+                        # For now, let's assume a successful 200 means the command was accepted.
+                        # We can log the response text for debugging if needed.
+                        response_text = await resp.text()
+                        _LOGGER.debug(f"Raw JSON command to {endpoint} successful. Response: {response_text}")
+                        try:
+                            return await resp.json(content_type=None) # Try to parse, but don't fail if not JSON
+                        except aiohttp.ContentTypeError:
+                            _LOGGER.debug(f"Response from raw JSON command to {endpoint} was not JSON: {response_text}")
+                            return {"status": "success", "raw_response": response_text} # Or return a custom success indicator
+                    else:
+                        _LOGGER.error(
+                            f"Raw JSON command to {endpoint} failed with status {resp.status}. Response: {await resp.text()}"
+                        )
+                        return None
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            _LOGGER.error(f"Error sending raw JSON command to {endpoint}: {e}")
+            return None
+
     async def _send_command(self, endpoint: str, extra_payload: dict = None):
         url = f"http://{self.host}:{DEFAULT_PORT}{endpoint}"
         payload = {"serialNumber": self.serial_number, "checkCode": self.check_code}
@@ -157,6 +186,25 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         return await self._send_command(ENDPOINT_CANCEL)
 
     async def toggle_light(self, on: bool):
-        # Example: LED: 1 for on, LED: 0 for off
-        command_str = f"LED: {1 if on else 0}"
-        return await self._send_command(ENDPOINT_COMMAND, {"command": command_str})
+        self._sequence_id += 1
+        # Defaulting to "chamber_light" as per user feedback on OrcaSlicer structure
+        # Printer API might require on_time etc., but for simple on/off, these are often optional
+        # or handled by the printer's default for "on"/"off" led_mode.
+        # The OrcaSlicer C++ code for simple on/off likely passes default values for these extra params.
+        # For now, we send the minimal structure.
+        json_payload = {
+            "system": {
+                "command": "ledctrl",
+                "led_node": "chamber_light",
+                "sequence_id": str(self._sequence_id),
+                "led_mode": "on" if on else "off",
+                # Optional parameters based on OrcaSlicer's command_set_chamber_light,
+                # setting to typical "on" or "off" values.
+                # These might need adjustment if the printer strictly requires them or has specific defaults.
+                "led_on_time": 1 if on else 0, # Arbitrary default, 1 for 'on', 0 for 'off'
+                "led_off_time": 0,
+                "loop_times": 1,
+                "interval_time": 0
+            }
+        }
+        return await self._send_raw_json_command(ENDPOINT_JSON_RPC, json_payload)
