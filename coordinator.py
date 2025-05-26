@@ -140,7 +140,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=payload, timeout=COORDINATOR_COMMAND_TIMEOUT) as resp:
                     if resp.status == 200:
-                        return await resp.json()
+                        return await resp.json(content_type=None)
                     else:
                         _LOGGER.error("Command %s failed with status %s", endpoint, resp.status)
                         return None
