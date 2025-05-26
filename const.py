@@ -24,7 +24,6 @@ ENDPOINT_PAUSE = "/pause"
 ENDPOINT_START = "/start"
 ENDPOINT_CANCEL = "/cancel"
 ENDPOINT_COMMAND = "/command"
-ENDPOINT_JSON_RPC = "/"
 
 # Printer states
 STATE_IDLE = "IDLE"
