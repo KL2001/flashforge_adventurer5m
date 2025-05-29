@@ -147,19 +147,68 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         return None # Should not be reached if try/except is comprehensive
 
     async def pause_print(self):
-        """Pauses the current print using HTTP command."""
-        # Assuming /pause is a valid HTTP endpoint that uses the standard auth wrapper
-        return await self._send_command(ENDPOINT_PAUSE)
+        """Pauses the current print using TCP M-code ~M25."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = "~M25\r\n"
+        action = "PAUSE PRINT"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+        
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                # await self.async_request_refresh()
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
 
     async def start_print(self, file_path: str):
-        """Starts a new print using HTTP command with file_path."""
-        # Assuming /start is a valid HTTP endpoint that uses standard auth and takes file_path
-        return await self._send_command(ENDPOINT_START, extra_payload={"file_path": file_path})
+        """Starts a new print using TCP M-code ~M23."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = f"~M23 0:/user/{file_path}\r\n"
+        action = f"START PRINT ({file_path})"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+        
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                # Consider an immediate refresh if printer status changes instantly
+                # await self.async_request_refresh()
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
 
     async def cancel_print(self):
-        """Cancels the current print using HTTP command."""
-        # Assuming /cancel is a valid HTTP endpoint that uses the standard auth wrapper
-        return await self._send_command(ENDPOINT_CANCEL)
+        """Cancels the current print using TCP M-code ~M26."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = "~M26\r\n"
+        action = "CANCEL PRINT"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+        
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                # await self.async_request_refresh()
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
 
     async def toggle_light(self, on: bool):
         """Toggles the printer light ON or OFF using TCP M-code commands."""

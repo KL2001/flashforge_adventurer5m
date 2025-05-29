@@ -21,10 +21,10 @@ BACKOFF_FACTOR = 1.5
 
 # API endpoints
 ENDPOINT_DETAIL = "/detail"
-ENDPOINT_PAUSE = "/pause"
-ENDPOINT_START = "/start"
-ENDPOINT_CANCEL = "/cancel"
-ENDPOINT_COMMAND = "/command"
+# ENDPOINT_PAUSE = "/pause" # Removed, functionality moved to TCP M-code
+# ENDPOINT_START = "/start" # Removed, functionality moved to TCP M-code
+# ENDPOINT_CANCEL = "/cancel" # Removed, functionality moved to TCP M-code
+ENDPOINT_COMMAND = "/command" # Retained for potential other HTTP commands
 
 # Printer states
 STATE_IDLE = "IDLE"
