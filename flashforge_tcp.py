@@ -9,7 +9,7 @@ DEFAULT_TCP_TIMEOUT = 5
 TCP_BUFFER_SIZE = 1024
 
 class FlashforgeTCPClient:
-    """Client for sending M-code commands to Flashforge printers via TCP.".""
+    """Client for sending M-code commands to Flashforge printers via TCP."""
 
     def __init__(self, host: str, port: int, timeout: float = DEFAULT_TCP_TIMEOUT):
         """
