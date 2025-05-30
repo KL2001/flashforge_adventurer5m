@@ -64,6 +64,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         state = call.data["state"]
         await coordinator.toggle_light(state)
 
+    async def handle_resume_print(call):
+        """Handle the service call to resume the print."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.resume_print()
+
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(DOMAIN, "start_print", handle_start_print, schema=vol.Schema({
         vol.Required("file_path"): cv.string,
@@ -72,6 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "toggle_light", handle_toggle_light, schema=vol.Schema({
         vol.Required("state"): cv.boolean,
     }))
+    hass.services.async_register(DOMAIN, "resume_print", handle_resume_print)
 
     return True
 
