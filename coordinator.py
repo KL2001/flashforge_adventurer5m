@@ -168,6 +168,28 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error(f"Exception during {action} TCP command: {e}")
             return False
 
+    async def resume_print(self):
+        """Resumes the current print using TCP M-code ~M24."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = "~M24\r\n"
+        action = "RESUME PRINT"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                # Consider an immediate refresh if printer status changes instantly
+                # await self.async_request_refresh()
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
+
     async def start_print(self, file_path: str):
         """Starts a new print using TCP M-code ~M23."""
         tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)

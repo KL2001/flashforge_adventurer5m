@@ -44,3 +44,9 @@ toggle_light:
       example: true
       selector:
         boolean:
+
+resume_print:
+  name: Resume Print
+  description: >-
+    Resumes a previously paused print job on the Flashforge printer.
+  fields: {} # No fields are needed as it takes no arguments
