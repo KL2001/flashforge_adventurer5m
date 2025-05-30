@@ -4,7 +4,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 # Define a default timeout for network operations (in seconds)
-DEFAULT_TCP_TIMEOUT = 5 
+DEFAULT_TCP_TIMEOUT = 5
 # Define a buffer size for reading responses
 TCP_BUFFER_SIZE = 1024
 
@@ -88,8 +88,8 @@ class FlashforgeTCPClient:
                     chunk = await asyncio.wait_for(self._reader.read(TCP_BUFFER_SIZE), timeout=self._timeout)
                     if not chunk: # Connection closed by peer
                         _LOGGER.warning(f"Connection closed by {self._host}:{self._port} while awaiting response.")
-                        break 
-                    
+                        break
+
                     decoded_chunk = chunk.decode('utf-8', errors='ignore')
                     full_response_data += decoded_chunk
                     _LOGGER.debug(f"Received chunk: {decoded_chunk.strip()}")
@@ -106,7 +106,7 @@ class FlashforgeTCPClient:
                 except Exception as e: # Catch other read errors
                     _LOGGER.error(f"Error reading response from {self._host}:{self._port}: {e}. Partial response: {full_response_data.strip()}")
                     break
-            
+
             return False, full_response_data.strip() # Terminator not found or other read issue
 
         except (ConnectionRefusedError, asyncio.TimeoutError, OSError) as e:

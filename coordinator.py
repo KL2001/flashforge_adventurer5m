@@ -34,10 +34,11 @@ from .const import (
     DEFAULT_PORT, # HTTP Port 8898
     DEFAULT_MCODE_PORT, # TCP M-code Port 8899
     ENDPOINT_DETAIL,
-    ENDPOINT_PAUSE,
-    ENDPOINT_START,
-    ENDPOINT_CANCEL,
-    # ENDPOINT_COMMAND is not used by toggle_light anymore
+    # ENDPOINT_PAUSE, # Removed, functionality now uses TCP M-codes
+    # ENDPOINT_START, # Removed, functionality now uses TCP M-codes
+    # ENDPOINT_CANCEL, # Removed, functionality now uses TCP M-codes
+    # ENDPOINT_COMMAND is not used by toggle_light anymore, and also not used by print controls.
+    # It remains in const.py for now, but not imported here unless needed.
     TIMEOUT_API_CALL,
     TIMEOUT_COMMAND as COORDINATOR_COMMAND_TIMEOUT, # For HTTP commands
     MAX_RETRIES,
@@ -85,7 +86,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                     async with session.post(url, json=payload, timeout=TIMEOUT_API_CALL) as resp:
                         resp.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
                         # Handle misspelled content type from printer for /detail status
-                        data = await resp.json(content_type=None) 
+                        data = await resp.json(content_type=None)
                         if self._validate_response(data):
                             self.connection_state = CONNECTION_STATE_CONNECTED
                             return data
@@ -124,7 +125,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         payload = {"serialNumber": self.serial_number, "checkCode": self.check_code}
         if extra_payload:
             payload.update(extra_payload)
-        
+
         _LOGGER.debug(f"Sending HTTP command to {url} with payload: {payload}")
         try:
             async with aiohttp.ClientSession() as session:
@@ -134,7 +135,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                     if resp.status == 200:
                         if expect_json_response:
                             # Handle misspelled content type from printer for command responses
-                            return await resp.json(content_type=None) 
+                            return await resp.json(content_type=None)
                         return {"status": "success_http_200", "raw_response": response_text} # Or just True
                     else:
                         _LOGGER.error(
@@ -153,7 +154,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         action = "PAUSE PRINT"
 
         _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        
+
         try:
             success, response = await tcp_client.send_command(command)
             if success:
@@ -174,7 +175,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         action = f"START PRINT ({file_path})"
 
         _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        
+
         try:
             success, response = await tcp_client.send_command(command)
             if success:
@@ -196,7 +197,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         action = "CANCEL PRINT"
 
         _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        
+
         try:
             success, response = await tcp_client.send_command(command)
             if success:
@@ -214,7 +215,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         """Toggles the printer light ON or OFF using TCP M-code commands."""
         # This now uses TCP on port DEFAULT_MCODE_PORT (8899)
         tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        
+
         if on:
             command = "~M146 r255 g255 b255 F0\r\n"  # Light ON (White)
             action = "ON"
@@ -223,7 +224,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             action = "OFF"
 
         _LOGGER.info(f"Attempting to turn light {action} using TCP command: {command.strip()}")
-        
+
         try:
             # The send_command in FlashforgeTCPClient handles connect, send, receive, close
             success, response = await tcp_client.send_command(command)
@@ -234,7 +235,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 # The M119 response showed "LED: 1", the /detail showed "lightStatus":"open".
                 # These might update independently or the HTTP one might lag.
                 # For now, let's rely on the next scheduled update.
-                # await self.async_request_refresh() 
+                # await self.async_request_refresh()
                 return True # Indicate command was sent successfully
             else:
                 _LOGGER.error(f"Failed to send light {action} TCP command. Details: {response}")

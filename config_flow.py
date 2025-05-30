@@ -82,7 +82,7 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
 
         # Use current values as defaults
         current_scan_interval = self.config_entry.options.get(
-            CONF_SCAN_INTERVAL, 
+            CONF_SCAN_INTERVAL,
             self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         )
 
@@ -90,7 +90,7 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
         options_schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_SCAN_INTERVAL, 
+                    CONF_SCAN_INTERVAL,
                     default=current_scan_interval
                 ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
             }
