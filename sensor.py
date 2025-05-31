@@ -50,13 +50,13 @@ SENSOR_DEFINITIONS = {
     "estimatedRightWeight": ("Estimated Right Weight", UnitOfMass.GRAMS, SensorDeviceClass.WEIGHT, SensorStateClass.MEASUREMENT, False, False),
     "chamberFanSpeed": ("Chamber Fan Speed", REVOLUTIONS_PER_MINUTE, None, SensorStateClass.MEASUREMENT, False, False),
     "coolingFanSpeed": ("Cooling Fan Speed", REVOLUTIONS_PER_MINUTE, None, SensorStateClass.MEASUREMENT, False, False),
-    "externalFanStatus": ("External Fan Status", None, None, None, False, False),
-    "internalFanStatus": ("Internal Fan Status", None, None, None, False, False),
+    # "externalFanStatus": ("External Fan Status", None, None, None, False, False), # Replaced by binary_sensor
+    # "internalFanStatus": ("Internal Fan Status", None, None, None, False, False), # Replaced by binary_sensor
     "tvoc": ("TVOC", "µg/m³", SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS, SensorStateClass.MEASUREMENT, False, False),
     "remainingDiskSpace": ("Remaining Disk Space", UnitOfInformation.GIGABYTES, SensorDeviceClass.DATA_SIZE, SensorStateClass.MEASUREMENT, False, False),
     "zAxisCompensation": ("Z Axis Compensation", UnitOfLength.MILLIMETERS, None, SensorStateClass.MEASUREMENT, False, False),
     # Add more as needed...
-    "autoShutdown": ("Auto Shutdown Status", None, None, None, False, False),
+    # "autoShutdown": ("Auto Shutdown Status", None, None, None, False, False), # Replaced by binary_sensor
     "autoShutdownTime": ("Auto Shutdown Time", UnitOfTime.MINUTES, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, False, False),
     "currentPrintSpeed": ("Current Print Speed", "mm/s", SensorDeviceClass.SPEED, SensorStateClass.MEASUREMENT, False, False),
     "flashRegisterCode": ("Flash Register Code", None, None, None, False, False),
