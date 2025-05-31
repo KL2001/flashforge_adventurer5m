@@ -266,3 +266,95 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             # This catches errors from tcp_client instantiation or if send_command itself raises an unexpected error
             _LOGGER.error(f"Exception during toggle_light TCP operation: {e}")
             return False
+
+    async def set_extruder_temperature(self, temperature: int):
+        """Sets the extruder temperature using TCP M-code ~M104."""
+        if not 0 <= temperature <= 300: # Example temperature range, adjust if known
+            _LOGGER.error(f"Invalid extruder temperature: {temperature}. Must be between 0 and 300.")
+            return False
+
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = f"~M104 S{temperature}\r\n"
+        action = f"SET EXTRUDER TEMPERATURE to {temperature}°C"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
+
+    async def set_bed_temperature(self, temperature: int):
+        """Sets the bed temperature using TCP M-code ~M140."""
+        if not 0 <= temperature <= 120: # Example temperature range, adjust if known
+            _LOGGER.error(f"Invalid bed temperature: {temperature}. Must be between 0 and 120.")
+            return False
+
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = f"~M140 S{temperature}\r\n"
+        action = f"SET BED TEMPERATURE to {temperature}°C"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
+
+    async def set_fan_speed(self, speed: int):
+        """Sets the fan speed using TCP M-code ~M106."""
+        if not 0 <= speed <= 255:
+            _LOGGER.error(f"Invalid fan speed: {speed}. Must be between 0 and 255.")
+            return False
+
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = f"~M106 S{speed}\r\n"
+        action = f"SET FAN SPEED to {speed}"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
+
+    async def turn_fan_off(self):
+        """Turns the fan off using TCP M-code ~M107."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = "~M107\r\n"
+        action = "TURN FAN OFF"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
