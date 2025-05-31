@@ -69,6 +69,32 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator = hass.data[DOMAIN][entry.entry_id]
         await coordinator.resume_print()
 
+    async def handle_set_extruder_temperature(call):
+        """Handle the service call to set the extruder temperature."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        temperature = call.data.get("temperature")
+        if temperature is not None:
+            await coordinator.set_extruder_temperature(int(temperature))
+
+    async def handle_set_bed_temperature(call):
+        """Handle the service call to set the bed temperature."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        temperature = call.data.get("temperature")
+        if temperature is not None:
+            await coordinator.set_bed_temperature(int(temperature))
+
+    async def handle_set_fan_speed(call):
+        """Handle the service call to set the fan speed."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        speed = call.data.get("speed")
+        if speed is not None:
+            await coordinator.set_fan_speed(int(speed))
+
+    async def handle_turn_fan_off(call):
+        """Handle the service call to turn the fan off."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.turn_fan_off()
+
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(DOMAIN, "start_print", handle_start_print, schema=vol.Schema({
         vol.Required("file_path"): cv.string,
@@ -78,6 +104,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Required("state"): cv.boolean,
     }))
     hass.services.async_register(DOMAIN, "resume_print", handle_resume_print)
+    hass.services.async_register(
+        DOMAIN,
+        "set_extruder_temperature",
+        handle_set_extruder_temperature,
+        schema=vol.Schema({vol.Required("temperature"): cv.positive_int})
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "set_bed_temperature",
+        handle_set_bed_temperature,
+        schema=vol.Schema({vol.Required("temperature"): cv.positive_int})
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "set_fan_speed",
+        handle_set_fan_speed,
+        schema=vol.Schema({vol.Required("speed"): vol.All(vol.Coerce(int), vol.Range(min=0, max=255))})
+    )
+    hass.services.async_register(DOMAIN, "turn_fan_off", handle_turn_fan_off)
 
     return True
 

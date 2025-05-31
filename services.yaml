@@ -50,3 +50,59 @@ resume_print:
   description: >-
     Resumes a previously paused print job on the Flashforge printer.
   fields: {} # No fields are needed as it takes no arguments
+
+set_extruder_temperature:
+  name: Set Extruder Temperature
+  description: >-
+    Sets the target temperature for the printer's extruder.
+  fields:
+    temperature:
+      name: Temperature
+      description: Target temperature in Celsius.
+      required: true
+      example: 210
+      selector:
+        number:
+          min: 0
+          max: 300 # Adjust max based on printer capability if known, else a safe upper limit
+          mode: box # Or slider
+          unit_of_measurement: "°C"
+
+set_bed_temperature:
+  name: Set Bed Temperature
+  description: >-
+    Sets the target temperature for the printer's heated bed.
+  fields:
+    temperature:
+      name: Temperature
+      description: Target temperature in Celsius.
+      required: true
+      example: 60
+      selector:
+        number:
+          min: 0
+          max: 120 # Adjust max based on printer capability if known, else a safe upper limit
+          mode: box # Or slider
+          unit_of_measurement: "°C"
+
+set_fan_speed:
+  name: Set Fan Speed
+  description: >-
+    Sets the printer's cooling fan speed. Typically the part cooling fan.
+  fields:
+    speed:
+      name: Speed
+      description: Fan speed (0-255). 0 is off, 255 is full speed.
+      required: true
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider # Slider is good for 0-255 range
+
+turn_fan_off:
+  name: Turn Fan Off
+  description: >-
+    Turns the printer's cooling fan off (equivalent to setting speed to 0 with M107).
+  fields: {} # No fields needed
