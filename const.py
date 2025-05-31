@@ -47,6 +47,10 @@ DOOR_CLOSED = "CLOSED"
 LIGHT_ON = "open"
 LIGHT_OFF = "OFF"
 
+# Binary sensor "on" states from API string values
+AUTO_SHUTDOWN_ENABLED_STATE = "open" # Based on API: autoShutdown: "open" / "close"
+FAN_STATUS_ON_STATE = "open"         # Based on API: externalFanStatus/internalFanStatus: "open" / "close"
+
 # Connection states
 CONNECTION_STATE_UNKNOWN = "unknown"
 CONNECTION_STATE_CONNECTED = "connected"

@@ -61,6 +61,15 @@
       },
       "error": {
         "name": "Error"
+      },
+      "auto_shutdown_enabled": {
+        "name": "Auto Shutdown Enabled"
+      },
+      "external_fan_active": {
+        "name": "External Fan Active"
+      },
+      "internal_fan_active": {
+        "name": "Internal Fan Active"
       }
     },
     "sensor": {
@@ -73,17 +82,8 @@
       "status": {
         "name": "Status"
       },
-      "auto_shutdown": {
-        "name": "Auto Shutdown"
-      },
       "auto_shutdown_time": {
         "name": "Auto Shutdown Time"
-      },
-      "door_status": {
-        "name": "Door Status"
-      },
-      "light_status": {
-        "name": "Light Status"
       },
       "ip_addr": {
         "name": "IP Address"

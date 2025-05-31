@@ -31,7 +31,9 @@ from .const import (
     LIGHT_ON,
     CONNECTION_STATE_CONNECTED,
     ERROR_CODE_NONE,
-    UNIT_PROGRESS_PERCENT
+    UNIT_PROGRESS_PERCENT,
+    AUTO_SHUTDOWN_ENABLED_STATE, # Added
+    FAN_STATUS_ON_STATE          # Added
 )
 from .coordinator import FlashforgeDataUpdateCoordinator
 
@@ -101,6 +103,39 @@ async def async_setup_entry(
             device_class=BinarySensorDeviceClass.PROBLEM,
             entity_category=EntityCategory.DIAGNOSTIC,
             error_sensor=True
+        ),
+
+        # Auto Shutdown Enabled
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name="Auto Shutdown Enabled",
+            icon="mdi:timer-cog-outline", # Or mdi:power-settings
+            device_class=None, # Or BinarySensorDeviceClass.POWER - using None for now
+            entity_category=EntityCategory.CONFIG, # It's a configurable setting
+            detail_attribute="autoShutdown",
+            value_on=AUTO_SHUTDOWN_ENABLED_STATE
+        ),
+
+        # External Fan Active
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name="External Fan Active",
+            icon="mdi:fan",
+            device_class=None, # Or BinarySensorDeviceClass.RUNNING - using None for now
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute="externalFanStatus",
+            value_on=FAN_STATUS_ON_STATE
+        ),
+
+        # Internal Fan Active
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name="Internal Fan Active",
+            icon="mdi:fan-alert", # Using a different fan icon for variety, or mdi:fan
+            device_class=None, # Or BinarySensorDeviceClass.RUNNING - using None for now
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute="internalFanStatus",
+            value_on=FAN_STATUS_ON_STATE
         )
     ]
     
