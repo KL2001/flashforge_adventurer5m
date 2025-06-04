@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, Optional # Ensure Optional is explicitly imported
 
 import aiohttp
 
@@ -71,11 +71,12 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         # self._sequence_id is removed as it was for the JSON RPC light attempt, not M-codes
 
     async def _async_update_data(self):
-        """Fetch data from the printer via HTTP API for sensors."""
+        """Fetch data from the printer via HTTP API for sensors and printable files list via TCP."""
         return await self._fetch_data()
 
     async def _fetch_data(self):
-        """Fetch data from HTTP /detail endpoint."""
+        """Fetch data from HTTP /detail endpoint and printable files list via TCP."""
+        http_data = {} # Initialize
         url = f"http://{self.host}:{DEFAULT_PORT}{ENDPOINT_DETAIL}"
         payload = {"serialNumber": self.serial_number, "checkCode": self.check_code}
         retries = 0
@@ -89,11 +90,11 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                         data = await resp.json(content_type=None)
                         if self._validate_response(data):
                             self.connection_state = CONNECTION_STATE_CONNECTED
-                            return data
+                            http_data = data # Store successful HTTP data
                         else:
                             _LOGGER.warning("Invalid response structure from /detail: %s", data)
                             self.connection_state = CONNECTION_STATE_DISCONNECTED
-                            return {} # Return empty if validation fails
+                            # http_data remains empty, will fall through to set printable_files to []
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 _LOGGER.warning("Fetch attempt %d for /detail failed: %s", retries + 1, e)
                 retries += 1
@@ -103,8 +104,79 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 else:
                     _LOGGER.error("Max retries exceeded for /detail fetching.")
                     self.connection_state = CONNECTION_STATE_DISCONNECTED
-                    return {} # Return empty on max retries
-        return {} # Should be unreachable if loop logic is correct, but as a fallback
+                    # http_data remains empty
+
+        # After HTTP attempt (success or fail), try to fetch printable files
+        # This ensures printable_files key is added even if HTTP fails, or if HTTP succeeds but file fetching fails
+        if http_data and self.connection_state == CONNECTION_STATE_CONNECTED: # Only try if HTTP was okay
+            try:
+                printable_files = await self._fetch_printable_files_list()
+                http_data['printable_files'] = printable_files
+            except Exception as e:
+                _LOGGER.error(f"Failed to fetch printable files list: {e}")
+                http_data['printable_files'] = [] # Ensure key exists
+        else: # HTTP fetch failed or resulted in disconnected state or empty http_data initially
+            # Ensure http_data is a dict if it wasn't successfully populated
+            if not http_data: # If http_data is still {} from initialization due to HTTP failure
+                http_data = {} # Ensure it's a dict for the next line
+            http_data['printable_files'] = [] # Ensure key exists
+
+        return http_data
+
+    async def _fetch_printable_files_list(self) -> list[str]:
+        """Fetches the list of printable files using TCP M-code ~M661."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = "~M661\r\n"
+        action = "FETCH PRINTABLE FILES"
+        files_list = []
+
+        _LOGGER.debug(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            # Assuming send_command returns the full stream after the initial "ok"
+            # which is needed for M661 where data follows "CMD M661 Received.\r\nok\r\n"
+            success, response = await tcp_client.send_command(command, response_terminator="ok\r\n")
+
+            if success and response:
+                _LOGGER.debug(f"Raw response for {action}: {response}")
+
+                # Normalize response: remove the command echo and initial "ok"
+                payload_str = response
+                prefix_to_remove = "CMD M661 Received.\r\nok\r\n"
+                if response.startswith(prefix_to_remove):
+                    payload_str = response[len(prefix_to_remove):]
+
+                # Separator for file entries, as identified from logs
+                separator = "::\xa3\xa3\x00\x00\x00"
+                parts = payload_str.split(separator)
+
+                for part in parts:
+                    # Paths are expected to start with "//data/"
+                    path_start_index = part.find("//data/")
+                    if path_start_index != -1:
+                        # Extract from "//data/" to the end of this segment
+                        file_path = part[path_start_index:]
+                        # Clean non-printable characters and trim whitespace
+                        cleaned_path = "".join(filter(lambda x: x.isprintable(), file_path)).strip()
+                        # Ensure it's a gcode/gx file and not an empty string
+                        if cleaned_path and cleaned_path.endswith((".gcode", ".gx")):
+                            files_list.append(cleaned_path)
+
+                if files_list:
+                    _LOGGER.info(f"Successfully fetched and parsed file list: {files_list}")
+                else:
+                    # This warning helps if parsing logic needs adjustment for different response structures
+                    _LOGGER.warning(f"File list parsing resulted in empty list. Raw payload part after prefix: {payload_str}")
+
+            elif success: # Command sent, but no meaningful response for file list after prefix
+                 _LOGGER.warning(f"{action} command sent, but no (or unexpected) data in response: {response}")
+            else: # Command failed to send
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+
+            return files_list
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return [] # Return empty list on error
 
     def _validate_response(self, data: dict[str, Any]) -> bool:
         """Validate the structure of the HTTP /detail response."""
