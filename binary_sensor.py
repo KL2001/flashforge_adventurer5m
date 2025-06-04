@@ -111,7 +111,7 @@ async def async_setup_entry(
             name="Auto Shutdown Enabled",
             icon="mdi:timer-cog-outline", # Or mdi:power-settings
             device_class=None, # Or BinarySensorDeviceClass.POWER - using None for now
-            entity_category=EntityCategory.CONFIG, # It's a configurable setting
+            entity_category=None, # Changed to None
             detail_attribute="autoShutdown",
             value_on=AUTO_SHUTDOWN_ENABLED_STATE
         ),
