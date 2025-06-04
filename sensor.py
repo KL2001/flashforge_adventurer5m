@@ -69,6 +69,7 @@ SENSOR_DEFINITIONS = {
     "pid": ("Printer ID (PID)", None, None, None, False, False),
     "polarRegisterCode": ("Polar Register Code", None, None, None, False, False),
     "printSpeedAdjust": ("Print Speed Adjustment", PERCENTAGE, None, SensorStateClass.MEASUREMENT, False, True),
+    "printable_files": ("Printable Files Count", "files", None, SensorStateClass.MEASUREMENT, True, False),
 }
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -125,6 +126,7 @@ class FlashforgeSensor(CoordinatorEntity, SensorEntity):
         self._attr_device_class = device_class
         self._attr_state_class = state_class
         self._attr_native_unit_of_measurement = PERCENTAGE if is_percentage else unit
+        self._attr_extra_state_attributes = {} # Initialize extra state attributes
 
         fw = None
         if self.coordinator.data:
@@ -145,13 +147,22 @@ class FlashforgeSensor(CoordinatorEntity, SensorEntity):
                 raw_value = self.coordinator.data.get(self._attribute_key)
             elif self.coordinator.data.get("detail"):
                 raw_value = self.coordinator.data.get("detail", {}).get(self._attribute_key)
-        if self._is_percentage and raw_value is not None:
+
+        # Ensure extra_state_attributes is initialized (already done in __init__, but good for clarity)
+        # self._attr_extra_state_attributes = self._attr_extra_state_attributes or {} # Not needed if __init__ guarantees it's a dict
+
+        if self._attribute_key == "printable_files":
+            files_list = raw_value if isinstance(raw_value, list) else []
+            self._attr_native_value = len(files_list) # State is the count of files
+            self._attr_extra_state_attributes["files"] = files_list # Add 'files' to attributes
+        elif self._is_percentage and raw_value is not None: # Keep existing percentage logic
             try:
                 self._attr_native_value = round(float(raw_value) * 100.0, 1)
             except Exception:
                 self._attr_native_value = None
-        else:
+        else: # Default logic for other sensors
             self._attr_native_value = raw_value
+
         # Update sw_version in device_info if it changed
         fw_version = self.coordinator.data.get("detail", {}).get("firmwareVersion") if self.coordinator.data else None
         if fw_version and self._attr_device_info.get("sw_version") != fw_version:

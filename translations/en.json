@@ -114,6 +114,9 @@
       },
       "error_code": {
         "name": "Error Code"
+      },
+      "printable_files": {
+        "name": "Printable Files Count"
       }
     }
   },
