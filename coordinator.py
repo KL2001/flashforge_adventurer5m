@@ -75,53 +75,65 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         return await self._fetch_data()
 
     async def _fetch_data(self):
-        """Fetch data from HTTP /detail endpoint and printable files list via TCP."""
-        http_data = {} # Initialize
+        """Fetch data from HTTP /detail endpoint and, on subsequent updates, printable files list via TCP."""
+        # Step 1: Fetch main status data via HTTP
         url = f"http://{self.host}:{DEFAULT_PORT}{ENDPOINT_DETAIL}"
         payload = {"serialNumber": self.serial_number, "checkCode": self.check_code}
+        current_data = {} # Holds data for this fetch attempt
         retries = 0
-        delay = RETRY_DELAY
+        delay = RETRY_DELAY # Initial delay
+
         while retries < MAX_RETRIES:
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(url, json=payload, timeout=TIMEOUT_API_CALL) as resp:
-                        resp.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
-                        # Handle misspelled content type from printer for /detail status
-                        data = await resp.json(content_type=None)
-                        if self._validate_response(data):
+                        resp.raise_for_status()
+                        api_response_data = await resp.json(content_type=None)
+                        if self._validate_response(api_response_data):
                             self.connection_state = CONNECTION_STATE_CONNECTED
-                            http_data = data # Store successful HTTP data
+                            current_data = api_response_data # Successfully fetched and validated
+                            break # Exit retry loop
                         else:
-                            _LOGGER.warning("Invalid response structure from /detail: %s", data)
+                            _LOGGER.warning("Invalid response structure from /detail: %s", api_response_data)
                             self.connection_state = CONNECTION_STATE_DISCONNECTED
-                            # http_data remains empty, will fall through to set printable_files to []
+                            current_data = {} # Ensure empty on validation failure
+                            break # Exit retry loop after validation failure (no point retrying same invalid data)
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 _LOGGER.warning("Fetch attempt %d for /detail failed: %s", retries + 1, e)
                 retries += 1
                 if retries < MAX_RETRIES:
                     await asyncio.sleep(delay)
-                    delay *= BACKOFF_FACTOR
+                    delay *= BACKOFF_FACTOR # Corrected: Use BACKOFF_FACTOR for exponential backoff
                 else:
                     _LOGGER.error("Max retries exceeded for /detail fetching.")
                     self.connection_state = CONNECTION_STATE_DISCONNECTED
-                    # http_data remains empty
+                    current_data = {} # Ensure empty on max retries
+                    break # Exit retry loop
+            # Fallthrough for next retry if not broken (e.g. if break was removed from validation fail)
 
-        # After HTTP attempt (success or fail), try to fetch printable files
-        # This ensures printable_files key is added even if HTTP fails, or if HTTP succeeds but file fetching fails
-        if http_data and self.connection_state == CONNECTION_STATE_CONNECTED: # Only try if HTTP was okay
+        # Step 2: Fetch printable files list via TCP, but only if this isn't the first successful fetch
+        # and the current HTTP fetch was successful.
+        # `self.data` holds the data from the *previous* successful update.
+        if self.data and current_data and self.connection_state == CONNECTION_STATE_CONNECTED:
+            _LOGGER.debug("Attempting to fetch printable files list on a subsequent update.")
             try:
                 printable_files = await self._fetch_printable_files_list()
-                http_data['printable_files'] = printable_files
+                current_data['printable_files'] = printable_files
             except Exception as e:
                 _LOGGER.error(f"Failed to fetch printable files list: {e}")
-                http_data['printable_files'] = [] # Ensure key exists
-        else: # HTTP fetch failed or resulted in disconnected state or empty http_data initially
-            # Ensure http_data is a dict if it wasn't successfully populated
-            if not http_data: # If http_data is still {} from initialization due to HTTP failure
-                http_data = {} # Ensure it's a dict for the next line
-            http_data['printable_files'] = [] # Ensure key exists
+                # Preserve old file list if current fetch fails, or set to empty
+                current_data['printable_files'] = self.data.get('printable_files', [])
+        elif current_data and self.connection_state == CONNECTION_STATE_CONNECTED:
+            # This is the first successful fetch (self.data was empty at the start of this _async_update_data call)
+            _LOGGER.debug("Initial successful data fetch. Deferring printable files list for next update.")
+            current_data['printable_files'] = []
+        else: # HTTP fetch failed entirely, or current_data is empty
+             # Ensure current_data is a dict if it wasn't successfully populated by HTTP call
+            if not current_data:
+                current_data = {}
+            current_data['printable_files'] = []
 
-        return http_data
+        return current_data
 
     async def _fetch_printable_files_list(self) -> list[str]:
         """Fetches the list of printable files using TCP M-code ~M661."""
