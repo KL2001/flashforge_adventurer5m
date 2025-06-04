@@ -122,7 +122,7 @@ async def async_setup_entry(
             name="External Fan Active",
             icon="mdi:fan",
             device_class=None, # Or BinarySensorDeviceClass.RUNNING - using None for now
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute="externalFanStatus",
             value_on=FAN_STATUS_ON_STATE
         ),
@@ -133,7 +133,7 @@ async def async_setup_entry(
             name="Internal Fan Active",
             icon="mdi:fan-alert", # Using a different fan icon for variety, or mdi:fan
             device_class=None, # Or BinarySensorDeviceClass.RUNNING - using None for now
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute="internalFanStatus",
             value_on=FAN_STATUS_ON_STATE
         )
