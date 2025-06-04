@@ -95,6 +95,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator = hass.data[DOMAIN][entry.entry_id]
         await coordinator.turn_fan_off()
 
+    async def handle_move_axis(call):
+        """Handle the service call to move printer axes."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        x = call.data.get("x")
+        y = call.data.get("y")
+        z = call.data.get("z")
+        feedrate = call.data.get("feedrate")
+
+        # Convert to float/int if not None, coordinator method expects these types
+        if x is not None:
+            x = float(x)
+        if y is not None:
+            y = float(y)
+        if z is not None:
+            z = float(z)
+        if feedrate is not None:
+            feedrate = int(feedrate)
+
+        await coordinator.move_axis(x=x, y=y, z=z, feedrate=feedrate)
+
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(DOMAIN, "start_print", handle_start_print, schema=vol.Schema({
         vol.Required("file_path"): cv.string,
@@ -123,6 +143,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=vol.Schema({vol.Required("speed"): vol.All(vol.Coerce(int), vol.Range(min=0, max=255))})
     )
     hass.services.async_register(DOMAIN, "turn_fan_off", handle_turn_fan_off)
+    hass.services.async_register(
+        DOMAIN,
+        "move_axis",
+        handle_move_axis,
+        schema=vol.Schema({
+            vol.Optional("x"): vol.Coerce(float),
+            vol.Optional("y"): vol.Coerce(float),
+            vol.Optional("z"): vol.Coerce(float),
+            vol.Optional("feedrate"): vol.Coerce(int)
+        })
+    )
 
     return True
 

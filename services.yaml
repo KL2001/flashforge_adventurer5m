@@ -106,3 +106,47 @@ turn_fan_off:
   description: >-
     Turns the printer's cooling fan off (equivalent to setting speed to 0 with M107).
   fields: {} # No fields needed
+
+move_axis:
+  name: Move Axis
+  description: >-
+    Moves one or more printer axes to the specified coordinates at an optional feedrate.
+    Specify at least one axis (x, y, or z). All coordinates are absolute.
+  fields:
+    x:
+      name: X Coordinate
+      description: Target X-axis coordinate in mm.
+      optional: true
+      example: 100.0
+      selector:
+        number:
+          mode: box
+          step: 0.1 # Allow for fine control
+    y:
+      name: Y Coordinate
+      description: Target Y-axis coordinate in mm.
+      optional: true
+      example: 100.0
+      selector:
+        number:
+          mode: box
+          step: 0.1
+    z:
+      name: Z Coordinate
+      description: Target Z-axis coordinate in mm.
+      optional: true
+      example: 50.0
+      selector:
+        number:
+          mode: box
+          step: 0.1
+    feedrate:
+      name: Feedrate
+      description: Speed of movement in mm/minute. Printer's default if not specified.
+      optional: true
+      example: 3000
+      selector:
+        number:
+          min: 0 # Feedrate usually must be positive, coordinator may enforce
+          mode: box
+          unit_of_measurement: "mm/min"
