@@ -168,6 +168,50 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error(f"Exception during {action} TCP command: {e}")
             return False
 
+    async def move_axis(self, x: Optional[float] = None, y: Optional[float] = None, z: Optional[float] = None, feedrate: Optional[int] = None):
+        """Moves printer axes using TCP M-code ~G0."""
+        command_parts = ["~G0"]
+        action_parts = []
+
+        if x is not None:
+            command_parts.append(f"X{x}")
+            action_parts.append(f"X to {x}")
+        if y is not None:
+            command_parts.append(f"Y{y}")
+            action_parts.append(f"Y to {y}")
+        if z is not None:
+            command_parts.append(f"Z{z}")
+            action_parts.append(f"Z to {z}")
+
+        if not action_parts: # No axis specified
+            _LOGGER.error("Move axis command called without specifying an axis (X, Y, or Z).")
+            return False
+
+        if feedrate is not None:
+            if feedrate > 0:
+                command_parts.append(f"F{feedrate}")
+                action_parts.append(f"at F{feedrate}")
+            else:
+                _LOGGER.warning(f"Invalid feedrate for move axis: {feedrate}. Must be positive. Sending command without feedrate.")
+
+        command = " ".join(command_parts) + "\r\n"
+        action = f"MOVE AXIS ({', '.join(action_parts)})"
+
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        try:
+            success, response = await tcp_client.send_command(command)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return False
+
     async def resume_print(self):
         """Resumes the current print using TCP M-code ~M24."""
         tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
