@@ -158,9 +158,10 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 if response.startswith(prefix_to_remove):
                     payload_str = response[len(prefix_to_remove):]
 
-                # Separator for file entries, as identified from logs
-                separator = "::\xa3\xa3\x00\x00\x00"
+                # Separator for file entries, updated based on potential decode('utf-8', errors='ignore') behavior
+                separator = "::\x00\x00\x00"
                 parts = payload_str.split(separator)
+                _LOGGER.debug(f"Splitting M661 payload. Number of parts: {len(parts)}. First few parts if any: {parts[:5]}")
 
                 for part in parts:
                     # Paths are expected to start with "//data/"
@@ -168,8 +169,10 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                     if path_start_index != -1:
                         # Extract from "//data/" to the end of this segment
                         file_path = part[path_start_index:]
+                        _LOGGER.debug(f"M661 parsing - Original part segment: '{part}', Found '//data/' at index {path_start_index}, Extracted file_path: '{file_path}'")
                         # Clean non-printable characters and trim whitespace
                         cleaned_path = "".join(filter(lambda x: x.isprintable(), file_path)).strip()
+                        _LOGGER.debug(f"M661 parsing - Cleaned path: '{cleaned_path}', Ends with .gcode/.gx: {cleaned_path.endswith(('.gcode', '.gx'))}")
                         # Ensure it's a gcode/gx file and not an empty string
                         if cleaned_path and cleaned_path.endswith((".gcode", ".gx")):
                             files_list.append(cleaned_path)
