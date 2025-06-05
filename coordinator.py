@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re # For M114 coordinate parsing
 from datetime import timedelta
 from typing import Any, Optional # Ensure Optional is explicitly imported
 
@@ -123,15 +124,39 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.error(f"Failed to fetch printable files list: {e}")
                 # Preserve old file list if current fetch fails, or set to empty
                 current_data['printable_files'] = self.data.get('printable_files', [])
+
+            # Fetch coordinates
+            try:
+                coords = await self._fetch_coordinates()
+                if coords:
+                    current_data['x_position'] = coords.get('x')
+                    current_data['y_position'] = coords.get('y')
+                    current_data['z_position'] = coords.get('z')
+                else: # Coords fetch failed or returned None
+                    current_data['x_position'] = self.data.get('x_position') # Keep old value
+                    current_data['y_position'] = self.data.get('y_position') # Keep old value
+                    current_data['z_position'] = self.data.get('z_position') # Keep old value
+            except Exception as e:
+                _LOGGER.error(f"Failed to fetch coordinates: {e}")
+                current_data['x_position'] = self.data.get('x_position', None)
+                current_data['y_position'] = self.data.get('y_position', None)
+                current_data['z_position'] = self.data.get('z_position', None)
+
         elif current_data and self.connection_state == CONNECTION_STATE_CONNECTED:
             # This is the first successful fetch (self.data was empty at the start of this _async_update_data call)
-            _LOGGER.debug("Initial successful data fetch. Deferring printable files list for next update.")
+            _LOGGER.debug("Initial successful data fetch. Deferring printable files list and coordinates for next update.")
             current_data['printable_files'] = []
+            current_data['x_position'] = None
+            current_data['y_position'] = None
+            current_data['z_position'] = None
         else: # HTTP fetch failed entirely, or current_data is empty
              # Ensure current_data is a dict if it wasn't successfully populated by HTTP call
             if not current_data:
                 current_data = {}
             current_data['printable_files'] = []
+            current_data['x_position'] = None
+            current_data['y_position'] = None
+            current_data['z_position'] = None
 
         return current_data
 
@@ -192,6 +217,51 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as e:
             _LOGGER.error(f"Exception during {action} TCP command: {e}")
             return [] # Return empty list on error
+
+    async def _fetch_coordinates(self) -> Optional[dict[str, float]]:
+        """Fetches and parses the printer's X,Y,Z coordinates using M-code ~M114."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        command = "~M114\r\n"
+        action = "FETCH COORDINATES"
+        coordinates = {}
+
+        _LOGGER.debug(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command, response_terminator="ok\r\n")
+            if success and response:
+                _LOGGER.debug(f"Raw response for {action}: {response}")
+                # Typical M114 response: "X:10.00 Y:20.00 Z:5.00 E:0.00 Count X:..."
+                # Or "ok C: X:0.00 Y:0.00 Z:0.00"
+
+                # More robust regex to find X, Y, Z values
+                # Handles variations like "ok C: X:..." or just "X:..."
+                # Looks for X:, Y:, Z: followed by a floating point number
+                match_x = re.search(r"X:([+-]?\d+\.?\d*)", response)
+                match_y = re.search(r"Y:([+-]?\d+\.?\d*)", response)
+                match_z = re.search(r"Z:([+-]?\d+\.?\d*)", response)
+
+                if match_x:
+                    coordinates['x'] = float(match_x.group(1))
+                if match_y:
+                    coordinates['y'] = float(match_y.group(1))
+                if match_z:
+                    coordinates['z'] = float(match_z.group(1))
+
+                if 'x' in coordinates and 'y' in coordinates and 'z' in coordinates:
+                    _LOGGER.debug(f"Successfully parsed coordinates: {coordinates}")
+                    return coordinates
+                else:
+                    _LOGGER.warning(f"Could not parse all X,Y,Z coordinates from M114 response: {response}. Parsed: {coordinates}")
+                    return None # Or return partially parsed if desired
+
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+                return None
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}")
+            return None
+        return None # Should be unreachable
 
     def _validate_response(self, data: dict[str, Any]) -> bool:
         """Validate the structure of the HTTP /detail response."""
