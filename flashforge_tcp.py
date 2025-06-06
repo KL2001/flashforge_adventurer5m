@@ -9,8 +9,17 @@ DEFAULT_TCP_TIMEOUT = 5
 TCP_BUFFER_SIZE = 1024
 
 class FlashforgeTCPClient:
-    """Client for sending M-code commands to Flashforge printers via TCP."""
+    """
+    Client for sending M-code commands to Flashforge printers via TCP.
 
+    This client implements a 'connect-send-close' strategy for each command.
+    This enhances robustness by avoiding issues with stale or half-open
+    connections that some printer firmwares might not handle well over time.
+    The trade-off is potentially higher latency for sequences of rapid commands.
+    If different behavior is needed (e.g., for very high-frequency command
+    sequences), this client could be adapted to manage persistent connections,
+    though that would require more complex connection state management.
+    """
     def __init__(self, host: str, port: int, timeout: float = DEFAULT_TCP_TIMEOUT):
         """
         Initialize the TCP client.
@@ -90,6 +99,10 @@ class FlashforgeTCPClient:
                         _LOGGER.warning(f"Connection closed by {self._host}:{self._port} while awaiting response.")
                         break
 
+                    # Decode using utf-8, ignoring errors. This is to handle potential
+                    # non-UTF-8 characters or binary noise from the printer without crashing.
+                    # May result in some data loss if malformed multi-byte UTF-8 sequences
+                    # or other encodings are present.
                     decoded_chunk = chunk.decode('utf-8', errors='ignore')
                     full_response_data += decoded_chunk
                     _LOGGER.debug(f"Received chunk: {decoded_chunk.strip()}")

@@ -10,6 +10,7 @@ This module handles the setup flow for the integration, including:
 import logging
 import voluptuous as vol
 import aiohttp
+from aiohttp import ClientTimeout # Import ClientTimeout
 import json
 import re
 import ipaddress
@@ -73,12 +74,9 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
         errors: Dict[str, str] = {}
 
         if user_input is not None:
-            # Validate input
-            if user_input.get(CONF_SCAN_INTERVAL) < 5 or user_input.get(CONF_SCAN_INTERVAL) > 300:
-                errors[CONF_SCAN_INTERVAL] = "invalid_scan_interval"
-            else:
-                # Update the options
-                return self.async_create_entry(title="", data=user_input)
+            # Vol.Schema handles range validation, direct creation if valid
+            # The form will re-show with errors if voluptuous validation fails
+            return self.async_create_entry(title="", data=user_input)
 
         # Use current values as defaults
         current_scan_interval = self.config_entry.options.get(
@@ -302,57 +300,69 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         for attempt in range(MAX_RETRIES):
             try:
-                # Set a timeout for the request
                 timeout_seconds = TIMEOUT_CONNECTION_TEST
                 
                 async with aiohttp.ClientSession() as session:
-                    try:
-                        # Use asyncio.wait_for to implement the timeout
-                        async with asyncio.timeout(timeout_seconds):
-                            async with session.post(url, json=payload) as resp:
-                                if resp.status in (401, 403):
-                                    _LOGGER.error("Authentication failed with status: %s", resp.status)
-                                    raise InvalidAuth("Authentication failed")
-                                
-                                resp.raise_for_status()
-                                text_data = await resp.text()
-                                
-                                try:
-                                    data = json.loads(text_data)
-                                except json.JSONDecodeError as e:
-                                    _LOGGER.error("Invalid JSON response: %s", e)
-                                    raise InvalidAuth(f"Invalid response format: {e}")
-
-                                # Validate response structure
-                                if not all(field in data for field in REQUIRED_RESPONSE_FIELDS):
-                                    _LOGGER.error("Invalid response structure, missing required fields")
-                                    raise InvalidAuth("Invalid response structure")
-
-                                # Check for error code in response
-                                if data.get("code") != 0:
-                                    error_msg = data.get("message", "Unknown error")
-                                    _LOGGER.error("Printer returned error: %s", error_msg)
-                                    raise InvalidAuth(f"Printer returned error: {error_msg}")
-
-                                # All checks passed, connection successful
-                                _LOGGER.info("Connection test successful")
-                                return
-                    except asyncio.TimeoutError:
-                        _LOGGER.warning("Connection timed out (attempt %d of %d)", 
-                                        attempt + 1, MAX_RETRIES)
-                        if attempt == MAX_RETRIES - 1:
-                            raise ConnectionTimeout("Connection to printer timed out")
+                    async with session.post(
+                        url,
+                        json=payload,
+                        timeout=aiohttp.ClientTimeout(total=timeout_seconds)
+                    ) as resp:
+                        if resp.status in (401, 403):
+                            _LOGGER.error("Authentication failed with status: %s for host %s", resp.status, host)
+                            raise InvalidAuth("Authentication failed")
                         
-            except aiohttp.ClientError as e:
-                _LOGGER.warning("Connection error (attempt %d of %d): %s", 
-                                attempt + 1, MAX_RETRIES, str(e))
+                        resp.raise_for_status() # Raises ClientResponseError for 4xx/5xx
+                        text_data = await resp.text()
+
+                        try:
+                            data = json.loads(text_data)
+                        except json.JSONDecodeError as e:
+                            _LOGGER.error("Invalid JSON response from %s: %s", host, e)
+                            raise InvalidAuth(f"Invalid response format: {e}")
+
+                        if not all(field in data for field in REQUIRED_RESPONSE_FIELDS):
+                            _LOGGER.error("Invalid response structure from %s, missing required fields", host)
+                            raise InvalidAuth("Invalid response structure")
+
+                        if data.get("code") != 0:
+                            error_msg = data.get("message", "Unknown error from printer")
+                            _LOGGER.error("Printer at %s returned error: %s", host, error_msg)
+                            raise InvalidAuth(f"Printer error: {error_msg}")
+
+                        _LOGGER.info("Connection test to %s successful", host)
+                        return # Success
+
+            except asyncio.TimeoutError: # This will be raised by ClientTimeout if it's a total timeout
+                _LOGGER.warning("Connection to %s timed out (attempt %d of %d)",
+                                host, attempt + 1, MAX_RETRIES)
                 if attempt == MAX_RETRIES - 1:
-                    raise CannotConnect(f"Connection failed: {e}")
+                    raise ConnectionTimeout(f"Connection to {host} timed out after {MAX_RETRIES} attempts")
 
-            # If we got here, we need to retry
+            except aiohttp.ClientResponseError as e: # Specific error for HTTP status issues
+                _LOGGER.warning("HTTP error connecting to %s (attempt %d of %d): %s - %s",
+                                host, attempt + 1, MAX_RETRIES, e.status, e.message)
+                if attempt == MAX_RETRIES - 1:
+                    raise CannotConnect(f"HTTP error after {MAX_RETRIES} attempts: {e.status} - {e.message}")
+
+            except aiohttp.ClientConnectionError as e: # More specific connection errors
+                _LOGGER.warning("Connection error to %s (attempt %d of %d): %s",
+                                host, attempt + 1, MAX_RETRIES, str(e))
+                if attempt == MAX_RETRIES - 1:
+                    raise CannotConnect(f"Connection failed after {MAX_RETRIES} attempts: {e}")
+
+            # General ClientError if not caught by more specific ones above
+            except aiohttp.ClientError as e:
+                _LOGGER.warning("Generic ClientError connecting to %s (attempt %d of %d): %s",
+                                host, attempt + 1, MAX_RETRIES, str(e))
+                if attempt == MAX_RETRIES - 1:
+                    raise CannotConnect(f"ClientError after {MAX_RETRIES} attempts: {e}")
+
+
+            # If we are not on the last attempt, sleep and retry
             if attempt < MAX_RETRIES - 1:
-                _LOGGER.info("Retrying connection in %s seconds", RETRY_DELAY)
+                _LOGGER.debug("Retrying connection to %s in %s seconds...", host, RETRY_DELAY)
                 await asyncio.sleep(RETRY_DELAY)
-
-        # Should never reach here due to the exception in the last attempt
-        raise CannotConnect("Failed to connect after all retry attempts")
+            # If it IS the last attempt and we haven't raised an exception yet (e.g. InvalidAuth was caught by the outer handler),
+            # then the loop will terminate and an exception should have been raised from within.
+            # The final raise below the loop is removed.

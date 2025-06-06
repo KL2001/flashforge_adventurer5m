@@ -31,9 +31,24 @@ from .const import (
     LIGHT_ON,
     CONNECTION_STATE_CONNECTED,
     ERROR_CODE_NONE,
-    UNIT_PROGRESS_PERCENT,
-    AUTO_SHUTDOWN_ENABLED_STATE, # Added
-    FAN_STATUS_ON_STATE          # Added
+    UNIT_PROGRESS_PERCENT, # Keep for print_progress formatting
+    AUTO_SHUTDOWN_ENABLED_STATE,
+    FAN_STATUS_ON_STATE,
+    # Import new API attribute constants
+    API_ATTR_STATUS,
+    API_ATTR_ERROR_CODE,
+    API_ATTR_DOOR_STATUS,
+    API_ATTR_LIGHT_STATUS,
+    API_ATTR_AUTO_SHUTDOWN,
+    API_ATTR_EXTERNAL_FAN_STATUS,
+    API_ATTR_INTERNAL_FAN_STATUS,
+    API_ATTR_PRINT_FILE_NAME,
+    API_ATTR_PRINT_PROGRESS,
+    API_ATTR_PRINT_LAYER,
+    API_ATTR_TARGET_PRINT_LAYER,
+    API_ATTR_PRINT_DURATION,
+    API_ATTR_ESTIMATED_TIME,
+    API_ATTR_FIRMWARE_VERSION,
 )
 from .coordinator import FlashforgeDataUpdateCoordinator
 
@@ -71,7 +86,7 @@ async def async_setup_entry(
             name="Door Open",
             icon="mdi:door-open",
             device_class=BinarySensorDeviceClass.DOOR,
-            detail_attribute="doorStatus",
+            detail_attribute=API_ATTR_DOOR_STATUS,
             value_on=DOOR_OPEN
         ),
         
@@ -81,7 +96,7 @@ async def async_setup_entry(
             name="Light On",
             icon="mdi:lightbulb",
             device_class=BinarySensorDeviceClass.LIGHT,
-            detail_attribute="lightStatus",
+            detail_attribute=API_ATTR_LIGHT_STATUS,
             value_on=LIGHT_ON
         ),
         
@@ -110,9 +125,9 @@ async def async_setup_entry(
             coordinator=coordinator,
             name="Auto Shutdown Enabled",
             icon="mdi:timer-cog-outline", # Or mdi:power-settings
-            device_class=None, # Or BinarySensorDeviceClass.POWER - using None for now
-            entity_category=None, # Changed to None
-            detail_attribute="autoShutdown",
+            device_class=BinarySensorDeviceClass.POWER,
+            entity_category=EntityCategory.CONFIG,
+            detail_attribute=API_ATTR_AUTO_SHUTDOWN,
             value_on=AUTO_SHUTDOWN_ENABLED_STATE
         ),
 
@@ -121,9 +136,9 @@ async def async_setup_entry(
             coordinator=coordinator,
             name="External Fan Active",
             icon="mdi:fan",
-            device_class=None, # Or BinarySensorDeviceClass.RUNNING - using None for now
-            entity_category=None,
-            detail_attribute="externalFanStatus",
+            device_class=BinarySensorDeviceClass.RUNNING,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_EXTERNAL_FAN_STATUS,
             value_on=FAN_STATUS_ON_STATE
         ),
 
@@ -132,9 +147,9 @@ async def async_setup_entry(
             coordinator=coordinator,
             name="Internal Fan Active",
             icon="mdi:fan-alert", # Using a different fan icon for variety, or mdi:fan
-            device_class=None, # Or BinarySensorDeviceClass.RUNNING - using None for now
-            entity_category=None,
-            detail_attribute="internalFanStatus",
+            device_class=BinarySensorDeviceClass.RUNNING,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_INTERNAL_FAN_STATUS,
             value_on=FAN_STATUS_ON_STATE
         )
     ]
@@ -212,13 +227,14 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """
         # If coordinator has no data, we can't determine state
         if not self.coordinator.data:
+            _LOGGER.debug("Coordinator data not available for sensor %s, returning False", self.name)
             return False
             
         detail = self.coordinator.data.get("detail", {})
         
         # Printing status sensor
         if self._is_printing_sensor:
-            status = detail.get("status")
+            status = detail.get(API_ATTR_STATUS)
             return status in PRINTING_STATES if status else False
             
         # Connection status sensor
@@ -232,12 +248,12 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
         # Error state sensor
         if self._error_sensor:
             # Check for error code
-            error_code = detail.get("errorCode")
+            error_code = detail.get(API_ATTR_ERROR_CODE)
             if error_code and error_code != ERROR_CODE_NONE:
                 return True
                 
             # Check if status is an error state
-            status = detail.get("status")
+            status = detail.get(API_ATTR_STATUS)
             return status in ERROR_STATES if status else False
             
         # For attribute-based sensors (door, light, etc.)
@@ -281,21 +297,28 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
         
         # Add error details for error sensor
         if self._error_sensor and self.is_on:
-            attributes["error_code"] = detail.get("errorCode")
+            attributes["error_code"] = detail.get(API_ATTR_ERROR_CODE)
         
         # Add print job details for printing sensor
         if self._is_printing_sensor and self.is_on:
-            # Include relevant print details
-            for attr in ["printFileName", "printProgress", "printLayer", "targetPrintLayer", 
-                        "printDuration", "estimatedTime"]:
-                if attr in detail:
+            # Define which attributes to include
+            print_job_attrs = [
+                API_ATTR_PRINT_FILE_NAME, API_ATTR_PRINT_PROGRESS, API_ATTR_PRINT_LAYER,
+                API_ATTR_TARGET_PRINT_LAYER, API_ATTR_PRINT_DURATION, API_ATTR_ESTIMATED_TIME
+            ]
+            for attr_key in print_job_attrs:
+                if attr_key in detail:
                     # Convert printProgress to percentage
-                    if attr == "printProgress" and detail[attr] is not None:
-                        attributes["print_progress"] = f"{float(detail[attr]) * 100:.1f}{UNIT_PROGRESS_PERCENT}"
+                    if attr_key == API_ATTR_PRINT_PROGRESS and detail[attr_key] is not None:
+                        try:
+                            progress_value = float(detail[attr_key]) * 100
+                            attributes["print_progress"] = f"{progress_value:.1f}{UNIT_PROGRESS_PERCENT}"
+                        except ValueError:
+                            _LOGGER.warning(f"Could not convert printProgress value '{detail[attr_key]}' to float.")
                     else:
                         # Convert camelCase to snake_case for attribute names
-                        snake_attr = re.sub(r'(?<!^)(?=[A-Z])', '_', attr).lower()
-                        attributes[snake_attr] = detail[attr]
+                        snake_attr = re.sub(r'(?<!^)(?=[A-Z])', '_', attr_key).lower()
+                        attributes[snake_attr] = detail[attr_key]
                         
         return attributes if attributes else None
     
@@ -312,7 +335,7 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
         if not self.coordinator.data:
             return None
             
-        fw = self.coordinator.data.get("detail", {}).get("firmwareVersion")
+        fw = self.coordinator.data.get("detail", {}).get(API_ATTR_FIRMWARE_VERSION)
         
         return {
             "identifiers": {(DOMAIN, self.coordinator.serial_number)},

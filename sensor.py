@@ -14,9 +14,9 @@ from homeassistant.const import (
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
 )
-from homeassistant.helpers.update_coordinator import CoordinatorEntity  # type: ignore
-from .const import DOMAIN
-from .coordinator import FlashforgeDataUpdateCoordinator  # type: ignore
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from .const import DOMAIN, API_ATTR_FIRMWARE_VERSION # Import new constant
+from .coordinator import FlashforgeDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ SENSOR_DEFINITIONS = {
     "rightTargetTemp": ("Right Nozzle Target Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, False, False),
     "platTemp": ("Platform Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, False, False),
     "platTargetTemp": ("Platform Target Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE, SensorStateClass.MEASUREMENT, False, False),
-    "printProgress": ("Print Progress", PERCENTAGE, None, SensorStateClass.MEASUREMENT, False, True),
+    "printProgress": ("Print Progress", PERCENTAGE, SensorDeviceClass.BATTERY, SensorStateClass.MEASUREMENT, False, True), # Changed device_class
     "printDuration": ("Print Duration", UnitOfTime.SECONDS, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, False, False),
     "estimatedTime": ("Estimated Time Remaining", UnitOfTime.SECONDS, SensorDeviceClass.DURATION, SensorStateClass.MEASUREMENT, False, False),
     "cumulativeFilament": ("Cumulative Filament", UnitOfLength.METERS, SensorDeviceClass.DISTANCE, SensorStateClass.TOTAL_INCREASING, False, False),
@@ -65,7 +65,7 @@ SENSOR_DEFINITIONS = {
     "measure": ("Build Volume", None, None, None, False, False),
     "nozzleCnt": ("Nozzle Count", None, None, SensorStateClass.MEASUREMENT, False, False),
     "nozzleModel": ("Nozzle Model", None, None, None, False, False),
-    "nozzleStyle": ("Nozzle Style", None, None, SensorStateClass.MEASUREMENT, False, False),
+    "nozzleStyle": ("Nozzle Style", None, None, None, False, False), # Changed state_class to None
     "pid": ("Printer ID (PID)", None, None, None, False, False),
     "polarRegisterCode": ("Polar Register Code", None, None, None, False, False),
     "printSpeedAdjust": ("Print Speed Adjustment", PERCENTAGE, None, SensorStateClass.MEASUREMENT, False, True),
@@ -132,8 +132,8 @@ class FlashforgeSensor(CoordinatorEntity, SensorEntity):
         self._attr_extra_state_attributes = {} # Initialize extra state attributes
 
         fw = None
-        if self.coordinator.data:
-            fw = self.coordinator.data.get("detail", {}).get("firmwareVersion")
+        if self.coordinator.data and self.coordinator.data.get("detail"): # Ensure detail exists
+            fw = self.coordinator.data.get("detail", {}).get(API_ATTR_FIRMWARE_VERSION)
         self._attr_device_info = {
             "identifiers": {(DOMAIN, self.coordinator.serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
@@ -158,18 +158,27 @@ class FlashforgeSensor(CoordinatorEntity, SensorEntity):
             files_list = raw_value if isinstance(raw_value, list) else []
             self._attr_native_value = len(files_list) # State is the count of files
             self._attr_extra_state_attributes["files"] = files_list # Add 'files' to attributes
-        elif self._is_percentage and raw_value is not None: # Keep existing percentage logic
+        elif self._is_percentage and raw_value is not None:
             try:
                 self._attr_native_value = round(float(raw_value) * 100.0, 1)
-            except Exception:
+            except (ValueError, TypeError) as e: # Catch specific errors
+                _LOGGER.warning(
+                    "Could not convert value '%s' to percentage for sensor %s (%s). Error: %s",
+                    raw_value,
+                    self._attribute_key,
+                    self.name,
+                    e,
+                    exc_info=True
+                )
                 self._attr_native_value = None
         else: # Default logic for other sensors
             self._attr_native_value = raw_value
 
         # Update sw_version in device_info if it changed
-        fw_version = self.coordinator.data.get("detail", {}).get("firmwareVersion") if self.coordinator.data else None
-        if fw_version and self._attr_device_info.get("sw_version") != fw_version:
-            self._attr_device_info["sw_version"] = fw_version
+        if self.coordinator.data and self.coordinator.data.get("detail"): # Ensure detail exists
+            fw_version = self.coordinator.data.get("detail", {}).get(API_ATTR_FIRMWARE_VERSION)
+            if fw_version and self._attr_device_info.get("sw_version") != fw_version:
+                self._attr_device_info["sw_version"] = fw_version
         self.async_write_ha_state()
 
     @property
