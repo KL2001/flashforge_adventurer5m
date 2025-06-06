@@ -120,7 +120,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         command = "~M114\r\n"
         action = "FETCH COORDINATES"
         coordinates = {}
-        conversion_factor = 2.54 # Printer M114 reports in tenths-of-an-inch
+        # conversion_factor = 2.54 # Removed, assuming M114 reports in mm
 
         _LOGGER.debug(f"Attempting to {action} using TCP command: {command.strip()}")
 
@@ -134,14 +134,14 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 match_z = re.search(r"Z:([+-]?\d+\.?\d*)", response)
 
                 if match_x:
-                    coordinates['x'] = float(match_x.group(1)) * conversion_factor
+                    coordinates['x'] = float(match_x.group(1))
                 if match_y:
-                    coordinates['y'] = float(match_y.group(1)) * conversion_factor
+                    coordinates['y'] = float(match_y.group(1))
                 if match_z:
-                    coordinates['z'] = float(match_z.group(1)) * conversion_factor
+                    coordinates['z'] = float(match_z.group(1))
 
                 if 'x' in coordinates and 'y' in coordinates and 'z' in coordinates:
-                    _LOGGER.debug(f"Successfully parsed and converted coordinates: {coordinates}")
+                    _LOGGER.debug(f"Successfully parsed coordinates: {coordinates}")
                     return coordinates
                 else:
                     _LOGGER.warning(f"Could not parse all X,Y,Z coordinates from M114 response: {response}. Parsed: {coordinates}")
