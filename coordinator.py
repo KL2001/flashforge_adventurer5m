@@ -65,11 +65,8 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug(f"Raw response for {action}: {response}")
 
                 payload_str = response
-                # Remove known prefixes like "CMD M661 Received.
-ok
-"
-                # The client might have already stripped some part of it if "ok
-" was found early.
+                # Remove known prefixes like "CMD M661 Received.\r\nok\r\n"
+                # The client might have already stripped some part of it if "ok\r\n" was found early.
                 # A more robust way is to find where the actual data starts.
                 # The Wireshark log showed "D\xaa\xaaD\x00\x00\x00\x1b::\xa3\xa3\x00\x00\x00//data/..."
                 # and the first part of the logged payload was "DD\x00\x00\x00\x1b::\xa3\xa3\x00\x00\x00//data/..."
