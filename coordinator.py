@@ -30,6 +30,9 @@ from .const import (
     REQUIRED_RESPONSE_FIELDS,
     REQUIRED_DETAIL_FIELDS,
     DEFAULT_SCAN_INTERVAL,
+    TCP_CMD_PRINT_FILE_PREFIX_USER, # Added
+    TCP_CMD_PRINT_FILE_PREFIX_ROOT,   # Added
+    API_ATTR_DETAIL,                  # Added (though not strictly used as "detail" string is common)
 )
 from .flashforge_tcp import FlashforgeTCPClient
 
@@ -50,7 +53,14 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         self.data: dict[str, Any] = {} # This is first populated by the base class after _async_update_data
 
     async def _fetch_printable_files_list(self) -> list[str]:
-        """Fetches the list of printable files using TCP M-code ~M661."""
+        """
+        Fetches the list of printable files using TCP M-code ~M661.
+        Expected M661 response format (observed):
+        CMD M661 Received.\r\nok\r\n  (optional prefix, may vary or be absent)
+        DD\x00\x00\x00\x1b::\xa3\xa3\x00\x00\x00/data/user/filament_config/ASA.txt::\x00\x00\x00/data/user/filament_config/PETG.txt...
+        (The "DD..." part might be specific to some firmware/printer responses, separator seems to be "::\x00\x00\x00")
+        The actual file paths start with /data/
+        """
         tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
         command = "~M661\r\n"
         action = "FETCH PRINTABLE FILES"
@@ -82,32 +92,38 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug(f"Payload for M661 parsing after stripping initial 'ok': '{payload_str[:200]}...'") # Log start of payload
 
                 # Separator after UTF-8 decoding with errors='ignore' (drops £)
-                separator = "::\x00\x00\x00"
+                separator = "::\x00\x00\x00" # Per observation
                 parts = payload_str.split(separator)
-                _LOGGER.debug(f"Splitting M661 payload with separator '{separator}'. Number of parts: {len(parts)}. First few parts if any: {parts[:5]}")
+                _LOGGER.debug(f"Splitting M661 payload with separator '{repr(separator)}'. Number of parts: {len(parts)}. First few parts if any: {parts[:5]}")
+
+                if len(parts) <= 1 and payload_str:
+                     _LOGGER.warning("M661 parsing: Separator '%s' not found or produced no splits in non-empty payload: %s", repr(separator), payload_str[:100] + "...")
 
                 for part in parts:
-                    path_start_index = part.find("/data/") # Changed from //data/
-                    _LOGGER.debug(f"M661 parsing - Original part segment: '{part}', Found '/data/' at index {path_start_index}")
+                    path_start_index = part.find("/data/")
                     if path_start_index != -1:
-                        file_path = part[path_start_index:] # Path extracted from /data/ onwards
+                        file_path = part[path_start_index:]
                         _LOGGER.debug(f"M661 parsing - Extracted file_path candidate: '{file_path}'")
-                        if file_path: # file_path here is the candidate starting with /data/
-                            # Clean non-printable characters and trim whitespace from the candidate
+                        if file_path:
                             cleaned_path = "".join(filter(lambda x: x.isprintable(), file_path)).strip()
                             _LOGGER.debug(f"M661 parsing - Cleaned path: '{cleaned_path}', Starts with /data/ and ends with .gcode/.gx: {cleaned_path.startswith('/data/') and cleaned_path.endswith(('.gcode', '.gx'))}")
-                            # Validate that the cleaned path still starts with /data/ and has a valid extension
                             if cleaned_path.startswith("/data/") and cleaned_path.endswith((".gcode", ".gx")):
                                 files_list.append(cleaned_path)
+                    else:
+                        if part.strip(): # Log only if part contains something other than whitespace
+                            _LOGGER.debug("M661 parsing: '/data/' not found in part: '%s'", part[:100] + "...")
 
                 if files_list:
                     _LOGGER.info(f"Successfully parsed file list: {files_list}")
                 else:
-                    _LOGGER.warning(f"File list parsing resulted in empty list. Raw payload part after prefix: {payload_str[:200]}...")
+                    _LOGGER.warning(
+                        "File list parsing resulted in empty list. This may be due to an unexpected response format, "
+                        "no files on printer, or parsing issues. Raw payload sample after prefix: %s",
+                        payload_str[:200] + "..."
+                    )
 
-
-            elif success:
-                 _LOGGER.warning(f"{action} command sent, but no valid file list data in response: {response}")
+            elif success: # Command sent, but response might be empty or not what we expected
+                 _LOGGER.warning(f"{action} command sent, but no valid file list data in response: '{response[:200]}...'")
             else:
                 _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
 
@@ -257,13 +273,14 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         if not all(field in data for field in REQUIRED_RESPONSE_FIELDS):
             _LOGGER.warning(f"Missing one or more required top-level fields: {REQUIRED_RESPONSE_FIELDS} in data: {data}")
             return False
-        detail = data.get("detail", {})
-        if not isinstance(detail, dict) or not all(field in detail for field in REQUIRED_DETAIL_FIELDS):
-            _LOGGER.warning(f"Missing one or more required detail fields: {REQUIRED_DETAIL_FIELDS} in detail: {detail}")
+        # API_ATTR_DETAIL is "detail"
+        detail_data = data.get(API_ATTR_DETAIL, {}) # Use constant if "detail" key was an API_ATTR_
+        if not isinstance(detail_data, dict) or not all(field in detail_data for field in REQUIRED_DETAIL_FIELDS):
+            _LOGGER.warning(f"Missing one or more required detail fields: {REQUIRED_DETAIL_FIELDS} in detail: {detail_data}")
             return False
         return True
 
-    async def _send_command(self, endpoint: str, extra_payload: dict = None, expect_json_response: bool = True):
+    async def _send_http_command(self, endpoint: str, extra_payload: dict = None, expect_json_response: bool = True):
         """Sends a command via HTTP POST, wrapped with auth details."""
         url = f"http://{self.host}:{DEFAULT_PORT}{endpoint}"
         payload = {"serialNumber": self.serial_number, "checkCode": self.check_code}
@@ -286,136 +303,92 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         except (aiohttp.ClientError, asyncio.TimeoutError) as e:
             _LOGGER.error(f"Error sending HTTP command to {endpoint}: {e}", exc_info=True)
             return None
-        return None
+        # return None # This line is unreachable due to the one above it.
+
+    async def _send_tcp_command(self, command: str, action: str, response_terminator: str = "ok\r\n") -> bool:
+        """Helper method to send a TCP command and handle common logic."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+        try:
+            success, response = await tcp_client.send_command(command, response_terminator=response_terminator)
+            if success:
+                _LOGGER.info(f"Successfully sent {action} command. Response: {response.strip() if response else 'N/A'}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response.strip() if response else 'N/A'}")
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
+            return False
 
     async def pause_print(self):
         """Pauses the current print using TCP M-code ~M25."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        command = "~M25\r\n"
-        action = "PAUSE PRINT"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command("~M25\r\n", "PAUSE PRINT")
 
     async def resume_print(self):
         """Resumes the current print using TCP M-code ~M24."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        command = "~M24\r\n"
-        action = "RESUME PRINT"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command("~M24\r\n", "RESUME PRINT")
 
     async def start_print(self, file_path: str):
         """Starts a new print using TCP M-code ~M23."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        # Ensure file_path does not start with / if "0:/user/" prefix is used,
-        # or adjust prefix if file_path is absolute from a different root.
-        # Assuming file_path is like "myprint.gcode" and should be under "0:/user/"
-        if file_path.startswith("0:/user/"):
+        if file_path.startswith(TCP_CMD_PRINT_FILE_PREFIX_USER):
             command = f"~M23 {file_path}\r\n"
-        elif file_path.startswith("/"): # If it's an absolute path starting with /
-            command = f"~M23 0:{file_path}\r\n" # Assuming 0: is the drive/storage
-        else: # Relative path
-            command = f"~M23 0:/user/{file_path}\r\n"
+        elif file_path.startswith("/"):
+            command = f"~M23 {TCP_CMD_PRINT_FILE_PREFIX_ROOT}{file_path.lstrip('/')}\r\n"
+        else:
+            command = f"~M23 {TCP_CMD_PRINT_FILE_PREFIX_USER}{file_path}\r\n"
 
         action = f"START PRINT ({file_path})"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command(command, action)
 
     async def cancel_print(self):
         """Cancels the current print using TCP M-code ~M26."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        command = "~M26\r\n"
-        action = "CANCEL PRINT"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command("~M26\r\n", "CANCEL PRINT")
 
     async def toggle_light(self, on: bool):
         """Toggles the printer light ON or OFF using TCP M-code commands."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        if on: command = "~M146 r255 g255 b255 F0\r\n"; action = "ON"
-        else: command = "~M146 r0 g0 b0 F0\r\n"; action = "OFF"
-        _LOGGER.info(f"Attempting to turn light {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent light {action} TCP command. Printer response: '{response.strip()}'"); return True
-            else: _LOGGER.error(f"Failed to send light {action} TCP command. Details: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during toggle_light TCP operation: {e}", exc_info=True); return False
+        if on:
+            command = "~M146 r255 g255 b255 F0\r\n"
+            action_desc = "TURN LIGHT ON"
+        else:
+            command = "~M146 r0 g0 b0 F0\r\n"
+            action_desc = "TURN LIGHT OFF"
+        return await self._send_tcp_command(command, action_desc)
 
     async def set_extruder_temperature(self, temperature: int):
         """Sets the extruder temperature using TCP M-code ~M104."""
-        if not 0 <= temperature <= 300:
+        if not 0 <= temperature <= 300: # Assuming max 300, adjust if different
             _LOGGER.error(f"Invalid extruder temperature: {temperature}. Must be between 0 and 300.")
             return False
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
         command = f"~M104 S{temperature}\r\n"
         action = f"SET EXTRUDER TEMPERATURE to {temperature}°C"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command(command, action)
 
     async def set_bed_temperature(self, temperature: int):
         """Sets the bed temperature using TCP M-code ~M140."""
-        if not 0 <= temperature <= 120:
+        if not 0 <= temperature <= 120: # Assuming max 120, adjust if different
             _LOGGER.error(f"Invalid bed temperature: {temperature}. Must be between 0 and 120.")
             return False
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
         command = f"~M140 S{temperature}\r\n"
         action = f"SET BED TEMPERATURE to {temperature}°C"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command(command, action)
 
     async def set_fan_speed(self, speed: int):
         """Sets the fan speed using TCP M-code ~M106."""
         if not 0 <= speed <= 255:
             _LOGGER.error(f"Invalid fan speed: {speed}. Must be between 0 and 255.")
             return False
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
         command = f"~M106 S{speed}\r\n"
         action = f"SET FAN SPEED to {speed}"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command(command, action)
 
     async def turn_fan_off(self):
         """Turns the fan off using TCP M-code ~M107."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        command = "~M107\r\n"
-        action = "TURN FAN OFF"
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success: _LOGGER.info(f"Successfully sent {action} command. Response: {response}"); return True
-            else: _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}"); return False
-        except Exception as e: _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True); return False
+        return await self._send_tcp_command("~M107\r\n", "TURN FAN OFF")
 
     async def move_axis(self, x: Optional[float] = None, y: Optional[float] = None, z: Optional[float] = None, feedrate: Optional[int] = None):
-        """Moves printer axes using TCP M-code ~G0."""
+        """Moves printer axes using TCP M-code G0 (or G1, G0 is usually rapid, G1 for controlled feed)."""
+        # Using G0 for simplicity as per original. If feedrate control is critical, G1 might be better.
         command_parts = ["~G0"]
         action_parts = []
 

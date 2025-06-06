@@ -24,28 +24,18 @@ ENDPOINT_DETAIL = "/detail"
 # ENDPOINT_PAUSE = "/pause" # Removed, functionality moved to TCP M-code
 # ENDPOINT_START = "/start" # Removed, functionality moved to TCP M-code
 # ENDPOINT_CANCEL = "/cancel" # Removed, functionality moved to TCP M-code
-ENDPOINT_COMMAND = "/command" # Retained for potential other HTTP commands
 
 # Printer states
-STATE_IDLE = "IDLE"
-STATE_PRINTING = "PRINTING"
-STATE_PAUSED = "PAUSED"
-STATE_ERROR = "ERROR"
-STATE_MAINTAINING = "MAINTAINING"
-STATE_BUSY = "BUSY"
 
 # Status groups
 PRINTING_STATES = ["BUILDING", "PRINTING", "RUNNING"]
 ERROR_STATES = ["ERROR", "FAILED", "FATAL"]
-BUSY_STATES = ["MAINTAINING", "BUSY", "PREPARING"]
 
 # Door status
 DOOR_OPEN = "OPEN"
-DOOR_CLOSED = "CLOSED"
 
 # Light status
 LIGHT_ON = "open"
-LIGHT_OFF = "OFF"
 
 # Binary sensor "on" states from API string values
 AUTO_SHUTDOWN_ENABLED_STATE = "open" # Based on API: autoShutdown: "open" / "close"
@@ -55,15 +45,9 @@ FAN_STATUS_ON_STATE = "open"         # Based on API: externalFanStatus/internalF
 CONNECTION_STATE_UNKNOWN = "unknown"
 CONNECTION_STATE_CONNECTED = "connected"
 CONNECTION_STATE_DISCONNECTED = "disconnected"
-CONNECTION_STATE_AUTHENTICATING = "authenticating"
 
 # Common error codes
 ERROR_CODE_NONE = "0"
-ERROR_CODE_AUTH_FAILED = "401"
-ERROR_CODE_NOT_FOUND = "404"
-ERROR_CODE_CONNECTION_FAILED = "connection_failed"
-ERROR_CODE_TIMEOUT = "timeout"
-ERROR_CODE_INVALID_RESPONSE = "invalid_response"
 
 # Key attributes for validation
 REQUIRED_RESPONSE_FIELDS = ["code", "message", "detail"]
@@ -75,9 +59,32 @@ REQUIRED_DETAIL_FIELDS = [
     "lightStatus"
 ]
 
+# API Attribute Keys (used in binary_sensor.py, sensor.py, camera.py, etc.)
+API_ATTR_STATUS = "status"
+API_ATTR_ERROR_CODE = "errorCode"
+API_ATTR_DOOR_STATUS = "doorStatus"
+API_ATTR_LIGHT_STATUS = "lightStatus"
+API_ATTR_AUTO_SHUTDOWN = "autoShutdown"
+API_ATTR_EXTERNAL_FAN_STATUS = "externalFanStatus"
+API_ATTR_INTERNAL_FAN_STATUS = "internalFanStatus"
+API_ATTR_PRINT_FILE_NAME = "printFileName"
+API_ATTR_PRINT_PROGRESS = "printProgress"
+API_ATTR_PRINT_LAYER = "printLayer"
+API_ATTR_TARGET_PRINT_LAYER = "targetPrintLayer"
+API_ATTR_PRINT_DURATION = "printDuration"
+API_ATTR_ESTIMATED_TIME = "estimatedTime"
+API_ATTR_FIRMWARE_VERSION = "firmwareVersion"
+API_ATTR_IP_ADDR = "ipAddr"
+API_ATTR_CAMERA_STREAM_URL = "cameraStreamUrl"
+API_ATTR_MODEL = "model" # From camera.py device_info
+
+# MJPEG Camera Settings
+MJPEG_DEFAULT_PORT = 8080
+MJPEG_STREAM_PATH = "/?action=stream"
+MJPEG_DUMMY_URL = "http://0.0.0.0/"
+
+# TCP Command Path Prefixes (for M23 start print command)
+TCP_CMD_PRINT_FILE_PREFIX_USER = "0:/user/"
+TCP_CMD_PRINT_FILE_PREFIX_ROOT = "0:/"
+
 # Units
-UNIT_TEMP_CELSIUS = "°C"
-UNIT_PROGRESS_PERCENT = "%"
-UNIT_LENGTH_MM = "mm"
-UNIT_WEIGHT_G = "g"
-UNIT_TIME_SEC = "s"
