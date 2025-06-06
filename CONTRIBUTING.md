@@ -13,6 +13,8 @@ This integration's test suite is designed for **local development only** and req
 
 ## Development Setup
 
+Note: The integration communicates with the printer using two main network ports: TCP port 8898 for its HTTP API (used for status polling and sensor data) and TCP port 8899 for its M-code command interface (used for printer control operations like starting prints, toggling lights, etc.).
+
 1. Fork and clone the repository:
    ```bash
    git clone https://github.com/yourusername/flashforge_adventurer5m.git
