@@ -70,9 +70,9 @@ SENSOR_DEFINITIONS = {
     "polarRegisterCode": ("Polar Register Code", None, None, None, False, False),
     "printSpeedAdjust": ("Print Speed Adjustment", PERCENTAGE, None, SensorStateClass.MEASUREMENT, False, True),
     "printable_files": ("Printable Files Count", "files", None, SensorStateClass.MEASUREMENT, True, False),
-    "x_position": ("X Position", UnitOfLength.MILLIMETERS, SensorDeviceClass.DISTANCE, SensorStateClass.MEASUREMENT, True, False),
-    "y_position": ("Y Position", UnitOfLength.MILLIMETERS, SensorDeviceClass.DISTANCE, SensorStateClass.MEASUREMENT, True, False),
-    "z_position": ("Z Position", UnitOfLength.MILLIMETERS, SensorDeviceClass.DISTANCE, SensorStateClass.MEASUREMENT, True, False),
+    "x_position": ("X Position", UnitOfLength.MILLIMETERS, None, SensorStateClass.MEASUREMENT, True, False),
+    "y_position": ("Y Position", UnitOfLength.MILLIMETERS, None, SensorStateClass.MEASUREMENT, True, False),
+    "z_position": ("Z Position", UnitOfLength.MILLIMETERS, None, SensorStateClass.MEASUREMENT, True, False),
 }
 
 async def async_setup_entry(hass, entry, async_add_entities):
