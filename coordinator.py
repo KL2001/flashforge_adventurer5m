@@ -73,14 +73,9 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 # This suggests the actual file data starts after the first "ok\r\n".
                 # Let's assume `payload_str` contains the data after "ok\r\n".
 
-                # If "CMD M661 Received.
-ok
-" is still in the response from client:
                 prefix_to_strip = "CMD M661 Received.\r\nok\r\n"
                 if response.startswith(prefix_to_strip):
                     payload_str = response[len(prefix_to_strip):]
-                # Or if only "ok
-" was the identified terminator by the client for some reason and it returned more:
                 elif response.startswith("ok\r\n"):
                      payload_str = response[len("ok\r\n"):]
 
