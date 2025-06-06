@@ -90,4 +90,32 @@ MJPEG_DUMMY_URL = "http://0.0.0.0/"
 TCP_CMD_PRINT_FILE_PREFIX_USER = "0:/user/"
 TCP_CMD_PRINT_FILE_PREFIX_ROOT = "0:/"
 
+# Endstop Sensor Constants
+# These API_ATTR keys are placeholders for how we'll store parsed M119 output in coordinator.data
+API_ATTR_X_ENDSTOP_STATUS = "x_endstop_status"
+API_ATTR_Y_ENDSTOP_STATUS = "y_endstop_status"
+API_ATTR_Z_ENDSTOP_STATUS = "z_endstop_status"
+API_ATTR_FILAMENT_ENDSTOP_STATUS = "filament_endstop_status"
+
+# Endstop Sensor Names
+NAME_X_ENDSTOP = "X Endstop"
+NAME_Y_ENDSTOP = "Y Endstop"
+NAME_Z_ENDSTOP = "Z Endstop"
+NAME_FILAMENT_ENDSTOP = "Filament Sensor"
+
+# Endstop Sensor Icons
+ICON_X_ENDSTOP = "mdi:axis-x-arrow"
+ICON_Y_ENDSTOP = "mdi:axis-y-arrow"
+ICON_Z_ENDSTOP = "mdi:axis-z-arrow"
+ICON_FILAMENT_ENDSTOP = "mdi:filament"
+
+# Bed Leveling Sensor API Attribute Key
+API_ATTR_BED_LEVELING_STATUS = "bed_leveling_status"
+
+# Bed Leveling Sensor Name
+NAME_BED_LEVELING = "Bed Leveling Active"
+
+# Bed Leveling Sensor Icon
+ICON_BED_LEVELING = "mdi:checkerboard" # Or mdi:format-list-bulleted-type
+
 # Units

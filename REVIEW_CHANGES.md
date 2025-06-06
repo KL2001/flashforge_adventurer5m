@@ -10,12 +10,14 @@ This document summarizes the key changes implemented based on a comprehensive co
     - Defined constants for API attribute keys (e.g., `API_ATTR_STATUS`, `API_ATTR_DETAIL`) to replace hardcoded strings in other files.
     - Added constants for MJPEG camera settings (e.g., `MJPEG_DEFAULT_PORT`, `MJPEG_STREAM_PATH`).
     - Introduced constants for TCP command path prefixes used in `coordinator.py` (e.g., `TCP_CMD_PRINT_FILE_PREFIX_USER`).
+    - Added constants for new Endstop and Bed Leveling binary sensors (API attribute keys, names, icons).
 
 ### 2. `binary_sensor.py`
 - **Error Handling**: Implemented safer conversion of `printProgress` data by adding a `try-except ValueError` block.
 - **Entity Definitions**: Assigned more specific `device_class` (e.g., `POWER`, `RUNNING`) and `entity_category` (e.g., `CONFIG`, `DIAGNOSTIC`) for newly added binary sensors (Auto Shutdown, Fans).
 - **Logging**: Added debug logging for cases where coordinator data is unavailable during state determination.
 - **Maintainability**: Replaced hardcoded API attribute strings with the newly defined constants from `const.py`.
+- **New Sensors Added**: Implemented binary sensors for X, Y, Z endstops, a filament runout sensor, and bed leveling status, based on data fetched by the coordinator.
 
 ### 3. `camera.py`
 - **Initialization**: Modified `MjpegCamera` initialization to use `mjpeg_url=None` if no valid stream URL is available at startup, preventing the base class from attempting connections to a dummy URL.
@@ -35,6 +37,11 @@ This document summarizes the key changes implemented based on a comprehensive co
     - Added detailed comments explaining the expected M661 (file list) response format.
     - Made M661 parsing more defensive with additional checks and improved warning/debug logging for unexpected scenarios.
 - **Maintainability**: Replaced hardcoded TCP `start_print` path prefixes and some API attribute strings with constants from `const.py`.
+- **New Data Fetching**:
+    - Implemented `_fetch_endstop_status` to send `~M119` and parse X, Y, Z, and filament endstop states.
+    - Implemented `_fetch_bed_leveling_status` to send `~M420 S0` and parse bed leveling active status.
+    - Integrated these new fetch methods into the main data update cycle.
+- **Removed Temporary Code**: Deleted diagnostic test code for `~M115` and `~M420 V` commands.
 
 ### 6. `flashforge_tcp.py`
 - **Clarity**: Added inline comments to explain:
@@ -59,3 +66,22 @@ This document summarizes the key changes implemented based on a comprehensive co
 - **Formatting & Linting**: Applied Black and Ruff for consistent code formatting and to fix minor linting issues.
 
 These changes collectively enhance the stability, maintainability, and overall quality of the `flashforge_adventurer5m` custom integration.
+
+## New Features Added (Post-Review Enhancements)
+
+This section details new sensors and functionalities added after the initial code review and fixes.
+
+### 1. Endstop Status Sensors
+- Binary sensors have been added to monitor the status of the printer's endstops:
+    - **X Endstop**: Indicates if the X-axis endstop is triggered or open.
+    - **Y Endstop**: Indicates if the Y-axis endstop is triggered or open.
+    - **Z Endstop**: Indicates if the Z-axis endstop is triggered or open.
+    - **Filament Sensor**: Indicates if the filament runout sensor (if present and reported by `~M119`) is triggered or open.
+- These sensors derive their state from the output of the `~M119` G-code command.
+- An "on" state typically means the endstop is "triggered," while "off" means "open."
+
+### 2. Bed Leveling Status Sensor
+- A new binary sensor, "Bed Leveling Active," has been added.
+- This sensor reports whether bed leveling compensation is currently active on the printer.
+- The state is derived from the output of the `~M420 S0` G-code command (or a similar query).
+- An "on" state means bed leveling is active, and "off" means it is inactive.
