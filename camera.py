@@ -23,7 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(
     hass: core.HomeAssistant,
     config_entry: config_entries.ConfigEntry,
-    async_add_entities: Callable
+    async_add_entities: Callable,
 ) -> bool:
     """
     Set up camera entities for the Flashforge Adventurer 5M PRO via a config entry.
@@ -48,7 +48,9 @@ class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
         CoordinatorEntity.__init__(self, coordinator)
         self.coordinator = coordinator
 
-        detail = self.coordinator.data.get("detail", {}) if self.coordinator.data else {}
+        detail = (
+            self.coordinator.data.get("detail", {}) if self.coordinator.data else {}
+        )
         serial_number = getattr(self.coordinator, "serial_number", "unknown")
         name = "Flashforge Adventurer 5M PRO Camera"
 
@@ -61,20 +63,26 @@ class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
             initial_mjpeg_url = camera_stream_url_from_api
             _LOGGER.debug("Using 'cameraStreamUrl' from API: %s", initial_mjpeg_url)
         elif ip_addr_from_api:
-            initial_mjpeg_url = f"http://{ip_addr_from_api}:{MJPEG_DEFAULT_PORT}{MJPEG_STREAM_PATH}"
-            _LOGGER.debug("'cameraStreamUrl' missing, using fallback URL constructed from ipAddr: %s", initial_mjpeg_url)
+            initial_mjpeg_url = (
+                f"http://{ip_addr_from_api}:{MJPEG_DEFAULT_PORT}{MJPEG_STREAM_PATH}"
+            )
+            _LOGGER.debug(
+                "'cameraStreamUrl' missing, using fallback URL constructed from ipAddr: %s",
+                initial_mjpeg_url,
+            )
         else:
             _LOGGER.warning(
                 "Coordinator does not have '%s' or '%s' in detail data. Camera will be unavailable initially.",
-                API_ATTR_CAMERA_STREAM_URL, API_ATTR_IP_ADDR
+                API_ATTR_CAMERA_STREAM_URL,
+                API_ATTR_IP_ADDR,
             )
             # MjpegCamera will be initialized with mjpeg_url=None
 
         MjpegCamera.__init__(
             self,
             name=name,
-            mjpeg_url=initial_mjpeg_url, # This can be None
-            still_image_url=None # No separate still image URL
+            mjpeg_url=initial_mjpeg_url,  # This can be None
+            still_image_url=None,  # No separate still image URL
         )
         self._attr_unique_id = f"flashforge_{serial_number}_camera"
         self._attr_is_streaming = True
@@ -84,8 +92,12 @@ class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
             "identifiers": {(DOMAIN, serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
             "manufacturer": "Flashforge",
-            "model": detail.get(API_ATTR_MODEL, "Adventurer 5M PRO"), # Use constant for model key
-            "sw_version": detail.get(API_ATTR_FIRMWARE_VERSION), # Use constant for firmware key
+            "model": detail.get(
+                API_ATTR_MODEL, "Adventurer 5M PRO"
+            ),  # Use constant for model key
+            "sw_version": detail.get(
+                API_ATTR_FIRMWARE_VERSION
+            ),  # Use constant for firmware key
         }
 
     @property
@@ -95,22 +107,31 @@ class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
         # It should return a valid URL if available, or None/dummy if not.
         # The _mjpeg_url attribute of the MjpegCamera class is what's actively used.
         # This property effectively tells the base class what the *current* best source is.
-        detail = self.coordinator.data.get("detail", {}) if self.coordinator.data else {}
+        detail = (
+            self.coordinator.data.get("detail", {}) if self.coordinator.data else {}
+        )
         camera_stream_url_from_api = detail.get(API_ATTR_CAMERA_STREAM_URL)
         ip_addr_from_api = detail.get(API_ATTR_IP_ADDR)
 
         if camera_stream_url_from_api:
             return camera_stream_url_from_api
         elif ip_addr_from_api:
-            fallback_url = f"http://{ip_addr_from_api}:{MJPEG_DEFAULT_PORT}{MJPEG_STREAM_PATH}"
-            _LOGGER.debug("No '%s' in API, using fallback URL: %s", API_ATTR_CAMERA_STREAM_URL, fallback_url)
+            fallback_url = (
+                f"http://{ip_addr_from_api}:{MJPEG_DEFAULT_PORT}{MJPEG_STREAM_PATH}"
+            )
+            _LOGGER.debug(
+                "No '%s' in API, using fallback URL: %s",
+                API_ATTR_CAMERA_STREAM_URL,
+                fallback_url,
+            )
             return fallback_url
         else:
             _LOGGER.debug(
                 "No '%s' or '%s' in API data for stream_source. Returning dummy URL.",
-                API_ATTR_CAMERA_STREAM_URL, API_ATTR_IP_ADDR
+                API_ATTR_CAMERA_STREAM_URL,
+                API_ATTR_IP_ADDR,
             )
-            return MJPEG_DUMMY_URL # Indicates no valid current source
+            return MJPEG_DUMMY_URL  # Indicates no valid current source
 
     @property
     def available(self) -> bool:
@@ -119,10 +140,16 @@ class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
         # self._mjpeg_url is the internal URL used by the MjpegCamera base class.
         # It's updated by _handle_coordinator_update.
         if not self.coordinator.last_update_success:
-            _LOGGER.debug("Camera '%s' unavailable: Coordinator update failed.", self.name)
+            _LOGGER.debug(
+                "Camera '%s' unavailable: Coordinator update failed.", self.name
+            )
             return False
         if self._mjpeg_url is None or self._mjpeg_url == MJPEG_DUMMY_URL:
-            _LOGGER.debug("Camera '%s' unavailable: MJPEG stream URL is not set or is dummy ('%s').", self.name, self._mjpeg_url)
+            _LOGGER.debug(
+                "Camera '%s' unavailable: MJPEG stream URL is not set or is dummy ('%s').",
+                self.name,
+                self._mjpeg_url,
+            )
             return False
         return True
 
@@ -144,14 +171,19 @@ class FlashforgeAdventurer5MCamera(CoordinatorEntity, MjpegCamera):
             # Setting it to DUMMY_URL explicitly makes our `available` check robust.
             effective_new_url = MJPEG_DUMMY_URL
 
-
         if effective_new_url != self._mjpeg_url:
-            _LOGGER.debug("Updating camera _mjpeg_url from '%s' to: '%s'", self._mjpeg_url, effective_new_url)
+            _LOGGER.debug(
+                "Updating camera _mjpeg_url from '%s' to: '%s'",
+                self._mjpeg_url,
+                effective_new_url,
+            )
             self._mjpeg_url = effective_new_url
             # If using HA core > 2023.X.Y, this might trigger reconnection in MjpegCamera if URL changes.
 
         # Update device info attributes like firmware version
-        if self.coordinator.data and self._attr_device_info: # Ensure data and device_info exist
+        if (
+            self.coordinator.data and self._attr_device_info
+        ):  # Ensure data and device_info exist
             detail = self.coordinator.data.get("detail", {})
             fw_version = detail.get(API_ATTR_FIRMWARE_VERSION)
             if fw_version and self._attr_device_info.get("sw_version") != fw_version:

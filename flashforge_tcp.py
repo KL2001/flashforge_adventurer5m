@@ -8,6 +8,7 @@ DEFAULT_TCP_TIMEOUT = 5
 # Define a buffer size for reading responses
 TCP_BUFFER_SIZE = 1024
 
+
 class FlashforgeTCPClient:
     """
     Client for sending M-code commands to Flashforge printers via TCP.
@@ -20,6 +21,7 @@ class FlashforgeTCPClient:
     sequences), this client could be adapted to manage persistent connections,
     though that would require more complex connection state management.
     """
+
     def __init__(self, host: str, port: int, timeout: float = DEFAULT_TCP_TIMEOUT):
         """
         Initialize the TCP client.
@@ -37,23 +39,27 @@ class FlashforgeTCPClient:
     async def _ensure_connected(self):
         """Ensures a connection is established. Reconnects if necessary."""
         if not self._writer or self._writer.is_closing():
-            _LOGGER.debug(f"No active connection or writer closing, attempting to connect to {self._host}:{self._port}")
+            _LOGGER.debug(
+                f"No active connection or writer closing, attempting to connect to {self._host}:{self._port}"
+            )
             try:
                 self._reader, self._writer = await asyncio.wait_for(
                     asyncio.open_connection(self._host, self._port),
-                    timeout=self._timeout
+                    timeout=self._timeout,
                 )
                 _LOGGER.debug(f"Successfully connected to {self._host}:{self._port}")
             except asyncio.TimeoutError:
                 _LOGGER.error(f"Timeout connecting to {self._host}:{self._port}")
-                self.close() # Ensure cleanup on timeout
+                self.close()  # Ensure cleanup on timeout
                 raise
             except ConnectionRefusedError:
                 _LOGGER.error(f"Connection refused by {self._host}:{self._port}")
                 self.close()
                 raise
             except OSError as e:
-                _LOGGER.error(f"Network error connecting to {self._host}:{self._port}: {e}")
+                _LOGGER.error(
+                    f"Network error connecting to {self._host}:{self._port}: {e}"
+                )
                 self.close()
                 raise
 
@@ -68,7 +74,9 @@ class FlashforgeTCPClient:
         self._writer = None
         _LOGGER.debug("TCP connection closed.")
 
-    async def send_command(self, command: str, response_terminator: str = "ok\r\n") -> tuple[bool, str]:
+    async def send_command(
+        self, command: str, response_terminator: str = "ok\r\n"
+    ) -> tuple[bool, str]:
         """
         Connects, sends a command, waits for a response ending with the terminator, and closes.
 
@@ -84,43 +92,60 @@ class FlashforgeTCPClient:
         full_response_data = ""
         try:
             await self._ensure_connected()
-            if not self._writer: # Connection failed in _ensure_connected
+            if not self._writer:  # Connection failed in _ensure_connected
                 return False, "Connection failed"
 
-            _LOGGER.debug(f"Sending command to {self._host}:{self._port}: {command.strip()}")
-            self._writer.write(command.encode('utf-8'))
+            _LOGGER.debug(
+                f"Sending command to {self._host}:{self._port}: {command.strip()}"
+            )
+            self._writer.write(command.encode("utf-8"))
             await asyncio.wait_for(self._writer.drain(), timeout=self._timeout)
 
             # Read response until terminator or timeout
             while True:
                 try:
-                    chunk = await asyncio.wait_for(self._reader.read(TCP_BUFFER_SIZE), timeout=self._timeout)
-                    if not chunk: # Connection closed by peer
-                        _LOGGER.warning(f"Connection closed by {self._host}:{self._port} while awaiting response.")
+                    chunk = await asyncio.wait_for(
+                        self._reader.read(TCP_BUFFER_SIZE), timeout=self._timeout
+                    )
+                    if not chunk:  # Connection closed by peer
+                        _LOGGER.warning(
+                            f"Connection closed by {self._host}:{self._port} while awaiting response."
+                        )
                         break
 
                     # Decode using utf-8, ignoring errors. This is to handle potential
                     # non-UTF-8 characters or binary noise from the printer without crashing.
                     # May result in some data loss if malformed multi-byte UTF-8 sequences
                     # or other encodings are present.
-                    decoded_chunk = chunk.decode('utf-8', errors='ignore')
+                    decoded_chunk = chunk.decode("utf-8", errors="ignore")
                     full_response_data += decoded_chunk
                     _LOGGER.debug(f"Received chunk: {decoded_chunk.strip()}")
 
                     if response_terminator in full_response_data:
-                        _LOGGER.debug(f"Response terminator '{response_terminator.strip()}' found.")
+                        _LOGGER.debug(
+                            f"Response terminator '{response_terminator.strip()}' found."
+                        )
                         return True, full_response_data.strip()
                 except asyncio.TimeoutError:
-                    _LOGGER.warning(f"Timeout waiting for response from {self._host}:{self._port} after sending command. Partial response: {full_response_data.strip()}")
-                    break # Exit loop on timeout
+                    _LOGGER.warning(
+                        f"Timeout waiting for response from {self._host}:{self._port} after sending command. Partial response: {full_response_data.strip()}"
+                    )
+                    break  # Exit loop on timeout
                 except ConnectionResetError:
-                    _LOGGER.warning(f"Connection reset by {self._host}:{self._port} while awaiting response.")
+                    _LOGGER.warning(
+                        f"Connection reset by {self._host}:{self._port} while awaiting response."
+                    )
                     break
-                except Exception as e: # Catch other read errors
-                    _LOGGER.error(f"Error reading response from {self._host}:{self._port}: {e}. Partial response: {full_response_data.strip()}")
+                except Exception as e:  # Catch other read errors
+                    _LOGGER.error(
+                        f"Error reading response from {self._host}:{self._port}: {e}. Partial response: {full_response_data.strip()}"
+                    )
                     break
 
-            return False, full_response_data.strip() # Terminator not found or other read issue
+            return (
+                False,
+                full_response_data.strip(),
+            )  # Terminator not found or other read issue
 
         except (ConnectionRefusedError, asyncio.TimeoutError, OSError) as e:
             _LOGGER.error(f"Failed to send command to {self._host}:{self._port}: {e}")
@@ -129,4 +154,4 @@ class FlashforgeTCPClient:
             _LOGGER.error(f"An unexpected error occurred in send_command: {e}")
             return False, str(e)
         finally:
-            self.close() # Ensure connection is closed after each command attempt
+            self.close()  # Ensure connection is closed after each command attempt

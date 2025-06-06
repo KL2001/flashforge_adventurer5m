@@ -12,7 +12,7 @@ states including:
 
 import logging
 import re
-from typing import Any, Dict, Optional, List, Callable
+from typing import Any, Dict, Optional, Callable
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
@@ -22,6 +22,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import PERCENTAGE  # Import PERCENTAGE from HA const
 
 from .const import (
     DOMAIN,
@@ -31,7 +32,7 @@ from .const import (
     LIGHT_ON,
     CONNECTION_STATE_CONNECTED,
     ERROR_CODE_NONE,
-    UNIT_PROGRESS_PERCENT, # Keep for print_progress formatting
+    # UNIT_PROGRESS_PERCENT, # Removed: use PERCENTAGE from homeassistant.const
     AUTO_SHUTDOWN_ENABLED_STATE,
     FAN_STATUS_ON_STATE,
     # Import new API attribute constants
@@ -54,21 +55,20 @@ from .coordinator import FlashforgeDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(
-    hass: HomeAssistant, 
-    entry: ConfigEntry,
-    async_add_entities: Callable
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: Callable
 ) -> None:
     """
     Set up binary sensors for the Flashforge Adventurer 5M PRO.
-    
+
     Args:
         hass: Home Assistant instance
         entry: The config entry
         async_add_entities: Callback to register entities
     """
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     # Create a list of entities to add
     entities = [
         # Printing status
@@ -77,9 +77,8 @@ async def async_setup_entry(
             name="Printing",
             icon="mdi:printer-3d",
             device_class=BinarySensorDeviceClass.RUNNING,
-            is_printing_sensor=True
+            is_printing_sensor=True,
         ),
-        
         # Door status - Is the door open?
         FlashforgeBinarySensor(
             coordinator=coordinator,
@@ -87,9 +86,8 @@ async def async_setup_entry(
             icon="mdi:door-open",
             device_class=BinarySensorDeviceClass.DOOR,
             detail_attribute=API_ATTR_DOOR_STATUS,
-            value_on=DOOR_OPEN
+            value_on=DOOR_OPEN,
         ),
-        
         # Light status - Is the light on?
         FlashforgeBinarySensor(
             coordinator=coordinator,
@@ -97,9 +95,8 @@ async def async_setup_entry(
             icon="mdi:lightbulb",
             device_class=BinarySensorDeviceClass.LIGHT,
             detail_attribute=API_ATTR_LIGHT_STATUS,
-            value_on=LIGHT_ON
+            value_on=LIGHT_ON,
         ),
-        
         # Connection status
         FlashforgeBinarySensor(
             coordinator=coordinator,
@@ -107,9 +104,8 @@ async def async_setup_entry(
             icon="mdi:connection",
             device_class=BinarySensorDeviceClass.CONNECTIVITY,
             entity_category=EntityCategory.DIAGNOSTIC,
-            connection_status_sensor=True
+            connection_status_sensor=True,
         ),
-        
         # Error status
         FlashforgeBinarySensor(
             coordinator=coordinator,
@@ -117,20 +113,18 @@ async def async_setup_entry(
             icon="mdi:alert-circle",
             device_class=BinarySensorDeviceClass.PROBLEM,
             entity_category=EntityCategory.DIAGNOSTIC,
-            error_sensor=True
+            error_sensor=True,
         ),
-
         # Auto Shutdown Enabled
         FlashforgeBinarySensor(
             coordinator=coordinator,
             name="Auto Shutdown Enabled",
-            icon="mdi:timer-cog-outline", # Or mdi:power-settings
+            icon="mdi:timer-cog-outline",  # Or mdi:power-settings
             device_class=BinarySensorDeviceClass.POWER,
             entity_category=EntityCategory.CONFIG,
             detail_attribute=API_ATTR_AUTO_SHUTDOWN,
-            value_on=AUTO_SHUTDOWN_ENABLED_STATE
+            value_on=AUTO_SHUTDOWN_ENABLED_STATE,
         ),
-
         # External Fan Active
         FlashforgeBinarySensor(
             coordinator=coordinator,
@@ -139,21 +133,20 @@ async def async_setup_entry(
             device_class=BinarySensorDeviceClass.RUNNING,
             entity_category=EntityCategory.DIAGNOSTIC,
             detail_attribute=API_ATTR_EXTERNAL_FAN_STATUS,
-            value_on=FAN_STATUS_ON_STATE
+            value_on=FAN_STATUS_ON_STATE,
         ),
-
         # Internal Fan Active
         FlashforgeBinarySensor(
             coordinator=coordinator,
             name="Internal Fan Active",
-            icon="mdi:fan-alert", # Using a different fan icon for variety, or mdi:fan
+            icon="mdi:fan-alert",  # Using a different fan icon for variety, or mdi:fan
             device_class=BinarySensorDeviceClass.RUNNING,
             entity_category=EntityCategory.DIAGNOSTIC,
             detail_attribute=API_ATTR_INTERNAL_FAN_STATUS,
-            value_on=FAN_STATUS_ON_STATE
-        )
+            value_on=FAN_STATUS_ON_STATE,
+        ),
     ]
-    
+
     # Register all entities with Home Assistant
     async_add_entities(entities)
 
@@ -161,26 +154,26 @@ async def async_setup_entry(
 class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """
     Binary sensor implementation for Flashforge Adventurer 5M PRO.
-    
+
     These sensors represent boolean states from the printer API.
     """
-    
+
     def __init__(
         self,
         coordinator: FlashforgeDataUpdateCoordinator,
         name: str,
-        icon: str = None,
-        device_class: str = None,
-        entity_category: EntityCategory = None,
-        detail_attribute: str = None,
+        icon: Optional[str] = None,
+        device_class: Optional[str] = None,
+        entity_category: Optional[EntityCategory] = None,
+        detail_attribute: Optional[str] = None,
         value_on: Any = None,
         is_printing_sensor: bool = False,
         connection_status_sensor: bool = False,
-        error_sensor: bool = False
+        error_sensor: bool = False,
     ) -> None:
         """
         Initialize a binary sensor for Flashforge.
-        
+
         Args:
             coordinator: The data update coordinator
             name: The sensor name
@@ -194,49 +187,52 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
             error_sensor: Whether this is the error state sensor
         """
         super().__init__(coordinator)
-        
+
         self._attr_name = f"Flashforge {name}"
         self._attr_icon = icon
         self._attr_device_class = device_class
         self._attr_entity_category = entity_category
-        
+
         # Specific attribute settings
         self._detail_attribute = detail_attribute
         self._value_on = value_on
         self._is_printing_sensor = is_printing_sensor
         self._connection_status_sensor = connection_status_sensor
         self._error_sensor = error_sensor
-        
+
         # Create unique_id
         sensor_key = name.lower().replace(" ", "_")
         self._attr_unique_id = f"flashforge_{coordinator.serial_number}_{sensor_key}"
-    
+
     @property
     def is_on(self) -> bool:
         """
         Return True if the binary sensor is on.
-        
+
         This method handles different types of binary sensors with different logic:
         - For printing sensor: Check if status is in the printing states list
         - For connection sensor: Check coordinator connection state
         - For error sensor: Check if error code exists or status is in error states
         - For attribute-based sensors: Compare to the expected "on" value
-        
+
         Returns:
             bool: True if the sensor is in the "on" state, False otherwise
         """
         # If coordinator has no data, we can't determine state
         if not self.coordinator.data:
-            _LOGGER.debug("Coordinator data not available for sensor %s, returning False", self.name)
+            _LOGGER.debug(
+                "Coordinator data not available for sensor %s, returning False",
+                self.name,
+            )
             return False
-            
+
         detail = self.coordinator.data.get("detail", {})
-        
+
         # Printing status sensor
         if self._is_printing_sensor:
             status = detail.get(API_ATTR_STATUS)
             return status in PRINTING_STATES if status else False
-            
+
         # Connection status sensor
         if self._connection_status_sensor:
             # Use the connection_state property if available
@@ -244,99 +240,110 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
                 return self.coordinator.connection_state == CONNECTION_STATE_CONNECTED
             # Fallback to checking if we have data
             return self.coordinator.last_update_success
-            
+
         # Error state sensor
         if self._error_sensor:
             # Check for error code
             error_code = detail.get(API_ATTR_ERROR_CODE)
             if error_code and error_code != ERROR_CODE_NONE:
                 return True
-                
+
             # Check if status is an error state
             status = detail.get(API_ATTR_STATUS)
             return status in ERROR_STATES if status else False
-            
+
         # For attribute-based sensors (door, light, etc.)
         if self._detail_attribute:
             return detail.get(self._detail_attribute) == self._value_on
-            
+
         # Default
         return False
-        
+
     @property
     def available(self) -> bool:
         """
         Return if entity is available.
-        
+
         The connection status sensor should always be available, even when
         the coordinator has no data. Other sensors depend on coordinator data.
-        
+
         Returns:
             bool: True if available, False otherwise
         """
         if self._connection_status_sensor:
             return True
         return self.coordinator.last_update_success
-        
+
     @property
     def extra_state_attributes(self) -> Optional[Dict[str, Any]]:
         """
         Return additional state attributes.
-        
+
         For error sensors, include error details when available.
         For printing sensors, include print job information.
-        
+
         Returns:
             dict: Additional attributes to expose
         """
         if not self.coordinator.data:
             return None
-            
+
         detail = self.coordinator.data.get("detail", {})
         attributes = {}
-        
+
         # Add error details for error sensor
         if self._error_sensor and self.is_on:
             attributes["error_code"] = detail.get(API_ATTR_ERROR_CODE)
-        
+
         # Add print job details for printing sensor
         if self._is_printing_sensor and self.is_on:
             # Define which attributes to include
             print_job_attrs = [
-                API_ATTR_PRINT_FILE_NAME, API_ATTR_PRINT_PROGRESS, API_ATTR_PRINT_LAYER,
-                API_ATTR_TARGET_PRINT_LAYER, API_ATTR_PRINT_DURATION, API_ATTR_ESTIMATED_TIME
+                API_ATTR_PRINT_FILE_NAME,
+                API_ATTR_PRINT_PROGRESS,
+                API_ATTR_PRINT_LAYER,
+                API_ATTR_TARGET_PRINT_LAYER,
+                API_ATTR_PRINT_DURATION,
+                API_ATTR_ESTIMATED_TIME,
             ]
             for attr_key in print_job_attrs:
                 if attr_key in detail:
                     # Convert printProgress to percentage
-                    if attr_key == API_ATTR_PRINT_PROGRESS and detail[attr_key] is not None:
+                    if (
+                        attr_key == API_ATTR_PRINT_PROGRESS
+                        and detail[attr_key] is not None
+                    ):
                         try:
                             progress_value = float(detail[attr_key]) * 100
-                            attributes["print_progress"] = f"{progress_value:.1f}{UNIT_PROGRESS_PERCENT}"
+                            attributes["print_progress"] = (
+                                f"{progress_value:.1f}{PERCENTAGE}"  # Use HA's PERCENTAGE
+                            )
                         except ValueError:
-                            _LOGGER.warning(f"Could not convert printProgress value '{detail[attr_key]}' to float.")
+                            _LOGGER.warning(
+                                f"Could not convert printProgress value '{detail[attr_key]}' to float."
+                            )
                     else:
                         # Convert camelCase to snake_case for attribute names
-                        snake_attr = re.sub(r'(?<!^)(?=[A-Z])', '_', attr_key).lower()
+                        snake_attr = re.sub(r"(?<!^)(?=[A-Z])", "_", attr_key).lower()
                         attributes[snake_attr] = detail[attr_key]
-                        
+
         return attributes if attributes else None
-    
+
     @property
     def device_info(self):
         """
         Return device info for this sensor.
-        
+
         Ensures all entities for the printer are grouped under the same device.
-        
+
         Returns:
             dict: Device information
         """
         if not self.coordinator.data:
             return None
-            
+
         fw = self.coordinator.data.get("detail", {}).get(API_ATTR_FIRMWARE_VERSION)
-        
+
         return {
             "identifiers": {(DOMAIN, self.coordinator.serial_number)},
             "name": "Flashforge Adventurer 5M PRO",
@@ -344,10 +351,9 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
             "model": "Adventurer 5M PRO",
             "sw_version": fw,
         }
-        
+
     async def async_added_to_hass(self):
         """Register callbacks when entity is added."""
         self.async_on_remove(
             self.coordinator.async_add_listener(self.async_write_ha_state)
         )
-

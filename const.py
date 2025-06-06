@@ -38,8 +38,10 @@ DOOR_OPEN = "OPEN"
 LIGHT_ON = "open"
 
 # Binary sensor "on" states from API string values
-AUTO_SHUTDOWN_ENABLED_STATE = "open" # Based on API: autoShutdown: "open" / "close"
-FAN_STATUS_ON_STATE = "open"         # Based on API: externalFanStatus/internalFanStatus: "open" / "close"
+AUTO_SHUTDOWN_ENABLED_STATE = "open"  # Based on API: autoShutdown: "open" / "close"
+FAN_STATUS_ON_STATE = (
+    "open"  # Based on API: externalFanStatus/internalFanStatus: "open" / "close"
+)
 
 # Connection states
 CONNECTION_STATE_UNKNOWN = "unknown"
@@ -56,7 +58,7 @@ REQUIRED_DETAIL_FIELDS = [
     "ipAddr",
     "firmwareVersion",
     "doorStatus",
-    "lightStatus"
+    "lightStatus",
 ]
 
 # API Attribute Keys (used in binary_sensor.py, sensor.py, camera.py, etc.)
@@ -76,7 +78,8 @@ API_ATTR_ESTIMATED_TIME = "estimatedTime"
 API_ATTR_FIRMWARE_VERSION = "firmwareVersion"
 API_ATTR_IP_ADDR = "ipAddr"
 API_ATTR_CAMERA_STREAM_URL = "cameraStreamUrl"
-API_ATTR_MODEL = "model" # From camera.py device_info
+API_ATTR_MODEL = "model"  # From camera.py device_info
+API_ATTR_DETAIL = "detail"  # For accessing the nested detail object
 
 # MJPEG Camera Settings
 MJPEG_DEFAULT_PORT = 8080

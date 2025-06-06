@@ -7,10 +7,10 @@ This module handles the setup flow for the integration, including:
 - Authentication verification
 - Configuration persistence
 """
+
 import logging
 import voluptuous as vol
 import aiohttp
-from aiohttp import ClientTimeout # Import ClientTimeout
 import json
 import re
 import ipaddress
@@ -37,14 +37,16 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Configuration schemas
-CONFIG_SCHEMA = vol.Schema({
-    vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
-    vol.Required("serial_number"): str,
-    vol.Required("check_code"): str,
-    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
-        vol.Coerce(int), vol.Range(min=5, max=300)
-    ),
-})
+CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
+        vol.Required("serial_number"): str,
+        vol.Required("check_code"): str,
+        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+            vol.Coerce(int), vol.Range(min=5, max=300)
+        ),
+    }
+)
 
 
 # Custom exception classes
@@ -68,7 +70,7 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
         self.config_entry = config_entry
 
     async def async_step_init(
-        self, user_input: Dict[str, Any] = None
+        self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
         """Manage options."""
         errors: Dict[str, str] = {}
@@ -81,15 +83,14 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
         # Use current values as defaults
         current_scan_interval = self.config_entry.options.get(
             CONF_SCAN_INTERVAL,
-            self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+            self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         )
 
         # Build the options schema
         options_schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=current_scan_interval
+                    CONF_SCAN_INTERVAL, default=current_scan_interval
                 ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
             }
         )
@@ -124,10 +125,10 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _validate_ip_address(self, host: str) -> Optional[str]:
         """
         Validate the IP address or hostname format.
-        
+
         Args:
             host: The IP address or hostname to validate
-            
+
         Returns:
             Error message if validation fails, None if validation passes
         """
@@ -137,17 +138,17 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return None
         except ValueError:
             # Not an IP address, check if it's a valid hostname
-            if not re.match(r'^[a-zA-Z0-9\-\.]+$', host):
+            if not re.match(r"^[a-zA-Z0-9\-\.]+$", host):
                 return "invalid_host_format"
         return None
 
     def _validate_serial_number(self, serial_number: str) -> Optional[str]:
         """
         Validate the serial number format.
-        
+
         Args:
             serial_number: The serial number to validate
-            
+
         Returns:
             Error message if validation fails, None if validation passes
         """
@@ -159,10 +160,10 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _validate_check_code(self, check_code: str) -> Optional[str]:
         """
         Validate the check code format.
-        
+
         Args:
             check_code: The check code to validate
-            
+
         Returns:
             Error message if validation fails, None if validation passes
         """
@@ -174,10 +175,10 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _validate_input(self, user_input: Dict[str, Any]) -> Dict[str, str]:
         """
         Validate the user input allows us to connect to the printer.
-        
+
         Args:
             user_input: Dictionary of user provided configuration options
-            
+
         Returns:
             Dictionary of validation errors, empty if validation passes
         """
@@ -219,15 +220,17 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return errors
 
-    async def async_step_user(self, user_input: Optional[Dict[str, Any]] = None) -> FlowResult:
+    async def async_step_user(
+        self, user_input: Optional[Dict[str, Any]] = None
+    ) -> FlowResult:
         """
         Handle the initial step of the config flow.
-        
+
         This step collects the printer's connection details and validates them.
-        
+
         Args:
             user_input: Dictionary of user provided configuration options
-            
+
         Returns:
             FlowResult directing the config flow
         """
@@ -239,7 +242,9 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 # Check if this printer is already configured
-                await self.async_set_unique_id(f"flashforge_{user_input['serial_number']}")
+                await self.async_set_unique_id(
+                    f"flashforge_{user_input['serial_number']}"
+                )
                 self._abort_if_unique_id_configured()
 
                 # Create the config entry
@@ -266,26 +271,22 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "max_scan_interval": "300",
             },
         )
-    
+
     async def _test_printer_connection(
-        self,
-        hass: HomeAssistant,
-        host: str,
-        serial_number: str,
-        check_code: str
+        self, hass: HomeAssistant, host: str, serial_number: str, check_code: str
     ) -> None:
         """
         Verify the printer is reachable and credentials are valid.
-        
+
         This method attempts to connect to the printer and validate the response,
         implementing retry logic for transient failures.
-        
+
         Args:
             hass: HomeAssistant instance
             host: Printer's IP address or hostname
             serial_number: Printer's serial number
             check_code: Printer's check code
-            
+
         Raises:
             CannotConnect: If the printer cannot be reached
             InvalidAuth: If authentication fails
@@ -293,26 +294,27 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             Exception: For other unexpected errors
         """
         url = f"http://{host}:{DEFAULT_PORT}{ENDPOINT_DETAIL}"
-        payload = {
-            "serialNumber": serial_number,
-            "checkCode": check_code
-        }
+        payload = {"serialNumber": serial_number, "checkCode": check_code}
 
         for attempt in range(MAX_RETRIES):
             try:
                 timeout_seconds = TIMEOUT_CONNECTION_TEST
-                
+
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
                         url,
                         json=payload,
-                        timeout=aiohttp.ClientTimeout(total=timeout_seconds)
+                        timeout=aiohttp.ClientTimeout(total=timeout_seconds),
                     ) as resp:
                         if resp.status in (401, 403):
-                            _LOGGER.error("Authentication failed with status: %s for host %s", resp.status, host)
+                            _LOGGER.error(
+                                "Authentication failed with status: %s for host %s",
+                                resp.status,
+                                host,
+                            )
                             raise InvalidAuth("Authentication failed")
-                        
-                        resp.raise_for_status() # Raises ClientResponseError for 4xx/5xx
+
+                        resp.raise_for_status()  # Raises ClientResponseError for 4xx/5xx
                         text_data = await resp.text()
 
                         try:
@@ -322,46 +324,88 @@ class FlashforgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             raise InvalidAuth(f"Invalid response format: {e}")
 
                         if not all(field in data for field in REQUIRED_RESPONSE_FIELDS):
-                            _LOGGER.error("Invalid response structure from %s, missing required fields", host)
+                            _LOGGER.error(
+                                "Invalid response structure from %s, missing required fields",
+                                host,
+                            )
                             raise InvalidAuth("Invalid response structure")
 
                         if data.get("code") != 0:
-                            error_msg = data.get("message", "Unknown error from printer")
-                            _LOGGER.error("Printer at %s returned error: %s", host, error_msg)
+                            error_msg = data.get(
+                                "message", "Unknown error from printer"
+                            )
+                            _LOGGER.error(
+                                "Printer at %s returned error: %s", host, error_msg
+                            )
                             raise InvalidAuth(f"Printer error: {error_msg}")
 
                         _LOGGER.info("Connection test to %s successful", host)
-                        return # Success
+                        return  # Success
 
-            except asyncio.TimeoutError: # This will be raised by ClientTimeout if it's a total timeout
-                _LOGGER.warning("Connection to %s timed out (attempt %d of %d)",
-                                host, attempt + 1, MAX_RETRIES)
+            except (
+                asyncio.TimeoutError
+            ):  # This will be raised by ClientTimeout if it's a total timeout
+                _LOGGER.warning(
+                    "Connection to %s timed out (attempt %d of %d)",
+                    host,
+                    attempt + 1,
+                    MAX_RETRIES,
+                )
                 if attempt == MAX_RETRIES - 1:
-                    raise ConnectionTimeout(f"Connection to {host} timed out after {MAX_RETRIES} attempts")
+                    raise ConnectionTimeout(
+                        f"Connection to {host} timed out after {MAX_RETRIES} attempts"
+                    )
 
-            except aiohttp.ClientResponseError as e: # Specific error for HTTP status issues
-                _LOGGER.warning("HTTP error connecting to %s (attempt %d of %d): %s - %s",
-                                host, attempt + 1, MAX_RETRIES, e.status, e.message)
+            except (
+                aiohttp.ClientResponseError
+            ) as e:  # Specific error for HTTP status issues
+                _LOGGER.warning(
+                    "HTTP error connecting to %s (attempt %d of %d): %s - %s",
+                    host,
+                    attempt + 1,
+                    MAX_RETRIES,
+                    e.status,
+                    e.message,
+                )
                 if attempt == MAX_RETRIES - 1:
-                    raise CannotConnect(f"HTTP error after {MAX_RETRIES} attempts: {e.status} - {e.message}")
+                    raise CannotConnect(
+                        f"HTTP error after {MAX_RETRIES} attempts: {e.status} - {e.message}"
+                    )
 
-            except aiohttp.ClientConnectionError as e: # More specific connection errors
-                _LOGGER.warning("Connection error to %s (attempt %d of %d): %s",
-                                host, attempt + 1, MAX_RETRIES, str(e))
+            except (
+                aiohttp.ClientConnectionError
+            ) as e:  # More specific connection errors
+                _LOGGER.warning(
+                    "Connection error to %s (attempt %d of %d): %s",
+                    host,
+                    attempt + 1,
+                    MAX_RETRIES,
+                    str(e),
+                )
                 if attempt == MAX_RETRIES - 1:
-                    raise CannotConnect(f"Connection failed after {MAX_RETRIES} attempts: {e}")
+                    raise CannotConnect(
+                        f"Connection failed after {MAX_RETRIES} attempts: {e}"
+                    )
 
             # General ClientError if not caught by more specific ones above
             except aiohttp.ClientError as e:
-                _LOGGER.warning("Generic ClientError connecting to %s (attempt %d of %d): %s",
-                                host, attempt + 1, MAX_RETRIES, str(e))
+                _LOGGER.warning(
+                    "Generic ClientError connecting to %s (attempt %d of %d): %s",
+                    host,
+                    attempt + 1,
+                    MAX_RETRIES,
+                    str(e),
+                )
                 if attempt == MAX_RETRIES - 1:
-                    raise CannotConnect(f"ClientError after {MAX_RETRIES} attempts: {e}")
-
+                    raise CannotConnect(
+                        f"ClientError after {MAX_RETRIES} attempts: {e}"
+                    )
 
             # If we are not on the last attempt, sleep and retry
             if attempt < MAX_RETRIES - 1:
-                _LOGGER.debug("Retrying connection to %s in %s seconds...", host, RETRY_DELAY)
+                _LOGGER.debug(
+                    "Retrying connection to %s in %s seconds...", host, RETRY_DELAY
+                )
                 await asyncio.sleep(RETRY_DELAY)
             # If it IS the last attempt and we haven't raised an exception yet (e.g. InvalidAuth was caught by the outer handler),
             # then the loop will terminate and an exception should have been raised from within.
