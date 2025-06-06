@@ -87,15 +87,17 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug(f"Splitting M661 payload with separator '{separator}'. Number of parts: {len(parts)}. First few parts if any: {parts[:5]}")
 
                 for part in parts:
-                    path_start_index = part.find("//data/")
-                    _LOGGER.debug(f"M661 parsing - Original part segment: '{part}', Found '//data/' at index {path_start_index}")
+                    path_start_index = part.find("/data/") # Changed from //data/
+                    _LOGGER.debug(f"M661 parsing - Original part segment: '{part}', Found '/data/' at index {path_start_index}")
                     if path_start_index != -1:
-                        file_path = part[path_start_index:]
-                        _LOGGER.debug(f"M661 parsing - Extracted file_path: '{file_path}'")
-                        if file_path:
+                        file_path = part[path_start_index:] # Path extracted from /data/ onwards
+                        _LOGGER.debug(f"M661 parsing - Extracted file_path candidate: '{file_path}'")
+                        if file_path: # file_path here is the candidate starting with /data/
+                            # Clean non-printable characters and trim whitespace from the candidate
                             cleaned_path = "".join(filter(lambda x: x.isprintable(), file_path)).strip()
-                            _LOGGER.debug(f"M661 parsing - Cleaned path: '{cleaned_path}', Ends with .gcode/.gx: {cleaned_path.endswith(('.gcode', '.gx'))}")
-                            if cleaned_path and cleaned_path.endswith((".gcode", ".gx")):
+                            _LOGGER.debug(f"M661 parsing - Cleaned path: '{cleaned_path}', Starts with /data/ and ends with .gcode/.gx: {cleaned_path.startswith('/data/') and cleaned_path.endswith(('.gcode', '.gx'))}")
+                            # Validate that the cleaned path still starts with /data/ and has a valid extension
+                            if cleaned_path.startswith("/data/") and cleaned_path.endswith((".gcode", ".gx")):
                                 files_list.append(cleaned_path)
 
                 if files_list:
