@@ -30,9 +30,16 @@ from .const import (
     REQUIRED_RESPONSE_FIELDS,
     REQUIRED_DETAIL_FIELDS,
     DEFAULT_SCAN_INTERVAL,
-    TCP_CMD_PRINT_FILE_PREFIX_USER,  # Added
-    TCP_CMD_PRINT_FILE_PREFIX_ROOT,  # Added
-    API_ATTR_DETAIL,  # Added (though not strictly used as "detail" string is common)
+    TCP_CMD_PRINT_FILE_PREFIX_USER,
+    TCP_CMD_PRINT_FILE_PREFIX_ROOT,
+    API_ATTR_DETAIL,
+    # Import new Endstop constants
+    API_ATTR_X_ENDSTOP_STATUS,
+    API_ATTR_Y_ENDSTOP_STATUS,
+    API_ATTR_Z_ENDSTOP_STATUS,
+    API_ATTR_FILAMENT_ENDSTOP_STATUS,
+    API_ATTR_BED_LEVELING_STATUS, # Added
+    # API_ATTR_FIRMWARE_VERSION, # No longer needed for M115 test
 )
 from .flashforge_tcp import FlashforgeTCPClient
 
@@ -61,6 +68,92 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         self.data: dict[str, Any] = (
             {}
         )  # This is first populated by the base class after _async_update_data
+
+    async def _fetch_bed_leveling_status(self) -> dict:
+        """Fetches and parses bed leveling status from M420 command."""
+        status_data = {API_ATTR_BED_LEVELING_STATUS: None}
+        command = "~M420 S0\r\n"
+        action = "FETCH BED LEVELING STATUS (M420 S0)"
+
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        _LOGGER.debug(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command, response_terminator="ok\r\n")
+            if success and response:
+                _LOGGER.debug(f"Raw response for {action}: {response}")
+                response_lower = response.lower()
+                if "bed leveling is on" in response_lower:
+                    status_data[API_ATTR_BED_LEVELING_STATUS] = True
+                elif "bed leveling is off" in response_lower:
+                    status_data[API_ATTR_BED_LEVELING_STATUS] = False
+                else:
+                    _LOGGER.warning(f"Could not determine bed leveling status from M420 response: {response[:200]}")
+                _LOGGER.debug(f"Parsed bed leveling data: {status_data}")
+            elif success:
+                _LOGGER.warning(f"{action} command sent, but no parseable data in response: {response}")
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
+
+        if hasattr(tcp_client, '_writer') and tcp_client._writer and not tcp_client._writer.is_closing():
+            tcp_client.close()
+
+        return status_data
+
+    async def _fetch_endstop_status(self) -> dict:
+        """Fetches and parses endstop status from M119 command."""
+        endstop_data = {
+            API_ATTR_X_ENDSTOP_STATUS: None,
+            API_ATTR_Y_ENDSTOP_STATUS: None,
+            API_ATTR_Z_ENDSTOP_STATUS: None,
+            API_ATTR_FILAMENT_ENDSTOP_STATUS: None, # Initialize, will remain None if not reported
+        }
+        action = "FETCH ENDSTOP STATUS (M119)"
+        command = "~M119\r\n"
+
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        _LOGGER.debug(f"Attempting to {action} using TCP command: {command.strip()}")
+
+        try:
+            success, response = await tcp_client.send_command(command, response_terminator="ok\r\n")
+            if success and response:
+                _LOGGER.debug(f"Raw response for {action}: {response}")
+                # Marlin typically responds with one line per endstop, e.g.:
+                # x_min:open
+                # y_min:open
+                # z_min:TRIGGERED
+                # filament:open (or some other key for filament sensor)
+                lines = response.lower().split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if "x_min:" in line:
+                        endstop_data[API_ATTR_X_ENDSTOP_STATUS] = "triggered" in line
+                    elif "y_min:" in line:
+                        endstop_data[API_ATTR_Y_ENDSTOP_STATUS] = "triggered" in line
+                    elif "z_min:" in line:
+                        endstop_data[API_ATTR_Z_ENDSTOP_STATUS] = "triggered" in line
+                    # Adjust "filament" based on actual M119 output key for filament sensor
+                    elif "filament" in line:
+                        endstop_data[API_ATTR_FILAMENT_ENDSTOP_STATUS] = "triggered" in line
+
+                _LOGGER.debug(f"Parsed endstop data: {endstop_data}")
+
+            elif success:
+                _LOGGER.warning(f"{action} command sent, but no parseable data in response: {response}")
+            else:
+                _LOGGER.error(f"Failed to send {action} command. Response/Error: {response}")
+
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
+
+        # Ensure client is closed if send_command itself had an issue before its own finally
+        # This check is a bit defensive as send_command should always close.
+        if hasattr(tcp_client, '_writer') and tcp_client._writer and not tcp_client._writer.is_closing():
+            tcp_client.close()
+
+        return endstop_data
 
     async def _fetch_printable_files_list(self) -> list[str]:
         """
@@ -281,12 +374,19 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         current_data["x_position"] = self.data.get("x_position") if self.data else None
         current_data["y_position"] = self.data.get("y_position") if self.data else None
         current_data["z_position"] = self.data.get("z_position") if self.data else None
+        # Initialize endstop status keys
+        current_data[API_ATTR_X_ENDSTOP_STATUS] = self.data.get(API_ATTR_X_ENDSTOP_STATUS)
+        current_data[API_ATTR_Y_ENDSTOP_STATUS] = self.data.get(API_ATTR_Y_ENDSTOP_STATUS)
+        current_data[API_ATTR_Z_ENDSTOP_STATUS] = self.data.get(API_ATTR_Z_ENDSTOP_STATUS)
+        current_data[API_ATTR_FILAMENT_ENDSTOP_STATUS] = self.data.get(API_ATTR_FILAMENT_ENDSTOP_STATUS)
+        # Initialize Bed Leveling status key
+        current_data[API_ATTR_BED_LEVELING_STATUS] = self.data.get(API_ATTR_BED_LEVELING_STATUS)
 
         # Step 2: Fetch TCP data only if HTTP was successful and it's not the first run for the coordinator
         # self.data will be empty on the very first run initiated by async_refresh in __init__
         if http_fetch_successful and self.data:
             _LOGGER.debug(
-                "Attempting to fetch TCP data (files and coordinates) on a subsequent update."
+                "Attempting to fetch TCP data (files, coordinates, endstops, bed leveling) on a subsequent update."
             )
             try:
                 files_list = await self._fetch_printable_files_list()
@@ -296,7 +396,6 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                     f"Failed to fetch printable files list during update: {e}",
                     exc_info=True,
                 )
-                # Keep previous list if current fetch fails
                 current_data["printable_files"] = self.data.get("printable_files", [])
 
             try:
@@ -305,7 +404,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                     current_data["x_position"] = coords.get("x")
                     current_data["y_position"] = coords.get("y")
                     current_data["z_position"] = coords.get("z")
-                else:  # Coords fetch failed or returned None, keep previous
+                else:
                     current_data["x_position"] = self.data.get("x_position")
                     current_data["y_position"] = self.data.get("y_position")
                     current_data["z_position"] = self.data.get("z_position")
@@ -313,13 +412,25 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.error(
                     f"Failed to fetch coordinates during update: {e}", exc_info=True
                 )
-                # Keep previous coords if current fetch fails
                 current_data["x_position"] = self.data.get("x_position")
                 current_data["y_position"] = self.data.get("y_position")
                 current_data["z_position"] = self.data.get("z_position")
+
+            try:
+                endstop_status = await self._fetch_endstop_status()
+                current_data.update(endstop_status)
+            except Exception as e:
+                _LOGGER.error(f"Failed to fetch endstop status during update: {e}", exc_info=True)
+
+            try:
+                bed_level_status = await self._fetch_bed_leveling_status()
+                current_data.update(bed_level_status)
+            except Exception as e:
+                _LOGGER.error(f"Failed to fetch bed leveling status during update: {e}", exc_info=True)
+
         elif http_fetch_successful and not self.data:
             _LOGGER.debug(
-                "Initial successful HTTP data fetch. Deferring TCP data (files and coords) for next update."
+                "Initial successful HTTP data fetch. Deferring TCP data (files, coords, endstops, bed leveling) for next update."
             )
             # Keys already initialized to empty/None above
 
@@ -399,29 +510,8 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             return None
         # return None # This line is unreachable due to the one above it.
 
-    async def _send_tcp_command(
-        self, command: str, action: str, response_terminator: str = "ok\r\n"
-    ) -> bool:
-        """Helper method to send a TCP command and handle common logic."""
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-        try:
-            success, response = await tcp_client.send_command(
-                command, response_terminator=response_terminator
-            )
-            if success:
-                _LOGGER.info(
-                    f"Successfully sent {action} command. Response: {response.strip() if response else 'N/A'}"
-                )
-                return True
-            else:
-                _LOGGER.error(
-                    f"Failed to send {action} command. Response/Error: {response.strip() if response else 'N/A'}"
-                )
-                return False
-        except Exception as e:
-            _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
-            return False
+    # Note: _send_tcp_command is defined below pause_print, ensure it's correctly placed or used.
+    # For this temporary test, _test_m119_output instantiates its own client.
 
     async def pause_print(self):
         """Pauses the current print using TCP M-code ~M25."""

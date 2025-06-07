@@ -35,7 +35,6 @@ from .const import (
     # UNIT_PROGRESS_PERCENT, # Removed: use PERCENTAGE from homeassistant.const
     AUTO_SHUTDOWN_ENABLED_STATE,
     FAN_STATUS_ON_STATE,
-    # Import new API attribute constants
     API_ATTR_STATUS,
     API_ATTR_ERROR_CODE,
     API_ATTR_DOOR_STATUS,
@@ -50,6 +49,23 @@ from .const import (
     API_ATTR_PRINT_DURATION,
     API_ATTR_ESTIMATED_TIME,
     API_ATTR_FIRMWARE_VERSION,
+    # Endstop constants
+    API_ATTR_X_ENDSTOP_STATUS,
+    API_ATTR_Y_ENDSTOP_STATUS,
+    API_ATTR_Z_ENDSTOP_STATUS,
+    API_ATTR_FILAMENT_ENDSTOP_STATUS,
+    NAME_X_ENDSTOP,
+    NAME_Y_ENDSTOP,
+    NAME_Z_ENDSTOP,
+    NAME_FILAMENT_ENDSTOP,
+    ICON_X_ENDSTOP,
+    ICON_Y_ENDSTOP,
+    ICON_Z_ENDSTOP,
+    ICON_FILAMENT_ENDSTOP,
+    # Bed Leveling constants
+    API_ATTR_BED_LEVELING_STATUS,
+    NAME_BED_LEVELING,
+    ICON_BED_LEVELING,
 )
 from .coordinator import FlashforgeDataUpdateCoordinator
 
@@ -145,6 +161,53 @@ async def async_setup_entry(
             detail_attribute=API_ATTR_INTERNAL_FAN_STATUS,
             value_on=FAN_STATUS_ON_STATE,
         ),
+        # Endstop Sensors
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name=NAME_X_ENDSTOP,
+            icon=ICON_X_ENDSTOP,
+            device_class=None,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_X_ENDSTOP_STATUS,
+            value_on=True, # Sensor is "on" (problem/triggered) if M119 reports triggered (True)
+        ),
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name=NAME_Y_ENDSTOP,
+            icon=ICON_Y_ENDSTOP,
+            device_class=None,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_Y_ENDSTOP_STATUS,
+            value_on=True,
+        ),
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name=NAME_Z_ENDSTOP,
+            icon=ICON_Z_ENDSTOP,
+            device_class=None,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_Z_ENDSTOP_STATUS,
+            value_on=True,
+        ),
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name=NAME_FILAMENT_ENDSTOP,
+            icon=ICON_FILAMENT_ENDSTOP,
+            device_class=BinarySensorDeviceClass.TAMPER, # Or None, or MOISTURE if it's a runout sensor
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_FILAMENT_ENDSTOP_STATUS,
+            value_on=True, # Assuming 'triggered' means problem (filament out)
+        ),
+        # Bed Leveling Status Sensor
+        FlashforgeBinarySensor(
+            coordinator=coordinator,
+            name=NAME_BED_LEVELING,
+            icon=ICON_BED_LEVELING,
+            device_class=None,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            detail_attribute=API_ATTR_BED_LEVELING_STATUS,
+            value_on=True
+        ),
     ]
 
     # Register all entities with Home Assistant
@@ -226,9 +289,17 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
             )
             return False
 
-        detail = self.coordinator.data.get("detail", {})
+        detail = self.coordinator.data.get("detail", {}) # For existing sensors that use it
 
-        # Printing status sensor
+        # For attribute-based sensors that get data from root of coordinator.data
+        # (like the new endstop sensors)
+        # We need to check coordinator.data directly, not just detail.
+        # The existing logic for self._detail_attribute already does coordinator.data.get("detail", {}).get(self._detail_attribute)
+        # This needs to be smarter. If is_top_level was a flag in FlashforgeBinarySensor, we could use it.
+        # For now, let's assume detail_attribute sensors are always in "detail" unless it's one of the special bool flags.
+        # The new endstop sensors will have their detail_attribute directly in coordinator.data.
+
+        # Printing status sensor (uses "detail" object)
         if self._is_printing_sensor:
             status = detail.get(API_ATTR_STATUS)
             return status in PRINTING_STATES if status else False
@@ -252,9 +323,24 @@ class FlashforgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
             status = detail.get(API_ATTR_STATUS)
             return status in ERROR_STATES if status else False
 
-        # For attribute-based sensors (door, light, etc.)
+        # For attribute-based sensors
         if self._detail_attribute:
-            return detail.get(self._detail_attribute) == self._value_on
+            # Check if the attribute is expected at the root of coordinator.data
+            # This applies to our new endstop sensors.
+            # A more robust way would be to pass a flag like `is_top_level_attribute`
+            # to the constructor, or make the sensor "smarter".
+            # For now, we assume endstop and bed leveling attributes are top-level in coordinator.data
+            # and others are in 'detail'.
+            if self._detail_attribute in [
+                API_ATTR_X_ENDSTOP_STATUS,
+                API_ATTR_Y_ENDSTOP_STATUS,
+                API_ATTR_Z_ENDSTOP_STATUS,
+                API_ATTR_FILAMENT_ENDSTOP_STATUS,
+                API_ATTR_BED_LEVELING_STATUS, # Added Bed Leveling status here
+            ]:
+                return self.coordinator.data.get(self._detail_attribute) == self._value_on
+            else: # Existing logic for attributes within "detail"
+                return detail.get(self._detail_attribute) == self._value_on
 
         # Default
         return False
