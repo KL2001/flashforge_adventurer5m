@@ -38,8 +38,7 @@ from .const import (
     API_ATTR_Y_ENDSTOP_STATUS,
     API_ATTR_Z_ENDSTOP_STATUS,
     API_ATTR_FILAMENT_ENDSTOP_STATUS,
-    API_ATTR_BED_LEVELING_STATUS, # Added
-    # API_ATTR_FIRMWARE_VERSION, # No longer needed for M115 test
+    API_ATTR_BED_LEVELING_STATUS,
 )
 from .flashforge_tcp import FlashforgeTCPClient
 
@@ -68,6 +67,30 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         self.data: dict[str, Any] = (
             {}
         )  # This is first populated by the base class after _async_update_data
+
+    async def _send_tcp_command(
+        self, command: str, action: str, response_terminator: str = "ok\r\n"
+    ) -> bool:
+        """Helper method to send a TCP command and handle common logic."""
+        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
+        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
+        try:
+            success, response = await tcp_client.send_command(
+                command, response_terminator=response_terminator
+            )
+            if success:
+                _LOGGER.info(
+                    f"Successfully sent {action} command. Response: {response.strip() if response else 'N/A'}"
+                )
+                return True
+            else:
+                _LOGGER.error(
+                    f"Failed to send {action} command. Response/Error: {response.strip() if response else 'N/A'}"
+                )
+                return False
+        except Exception as e:
+            _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
+            return False
 
     async def _fetch_bed_leveling_status(self) -> dict:
         """Fetches and parses bed leveling status from M420 command."""
@@ -510,9 +533,6 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             return None
         # return None # This line is unreachable due to the one above it.
 
-    # Note: _send_tcp_command is defined below pause_print, ensure it's correctly placed or used.
-    # For this temporary test, _test_m119_output instantiates its own client.
-
     async def pause_print(self):
         """Pauses the current print using TCP M-code ~M25."""
         return await self._send_tcp_command("~M25\r\n", "PAUSE PRINT")
@@ -624,21 +644,4 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         command = " ".join(command_parts) + "\r\n"
         action = f"MOVE AXIS ({', '.join(action_parts)})"
 
-        _LOGGER.info(f"Attempting to {action} using TCP command: {command.strip()}")
-
-        tcp_client = FlashforgeTCPClient(self.host, DEFAULT_MCODE_PORT)
-        try:
-            success, response = await tcp_client.send_command(command)
-            if success:
-                _LOGGER.info(
-                    f"Successfully sent {action} command. Response: {response}"
-                )
-                return True
-            else:
-                _LOGGER.error(
-                    f"Failed to send {action} command. Response/Error: {response}"
-                )
-                return False
-        except Exception as e:
-            _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
-            return False
+        return await self._send_tcp_command(command, action)
