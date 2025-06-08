@@ -14,7 +14,8 @@ This document summarizes the key changes implemented based on a comprehensive co
 
 ### 2. `binary_sensor.py`
 - **Error Handling**: Implemented safer conversion of `printProgress` data by adding a `try-except ValueError` block.
-- **Entity Definitions**: Assigned more specific `device_class` (e.g., `POWER`, `RUNNING`) and `entity_category` (e.g., `CONFIG`, `DIAGNOSTIC`) for newly added binary sensors (Auto Shutdown, Fans).
+- **Entity Definitions**: Assigned more specific `device_class` (e.g., `POWER`, `RUNNING`) for some sensors.
+- **Entity Categorization**: Changed `entity_category` to `None` for several sensors (Connected, Error, Auto Shutdown, Fans, Endstops, Bed Leveling) to make them appear on the main device panel, per user request.
 - **Logging**: Added debug logging for cases where coordinator data is unavailable during state determination.
 - **Maintainability**: Replaced hardcoded API attribute strings with the newly defined constants from `const.py`.
 - **New Sensors Added**: Implemented binary sensors for X, Y, Z endstops, a filament runout sensor, and bed leveling status, based on data fetched by the coordinator.
@@ -30,9 +31,10 @@ This document summarizes the key changes implemented based on a comprehensive co
     - Changed `state_class` for the "nozzleStyle" sensor to `None` (assuming textual data).
 - **Error Handling**: Enhanced error logging for percentage conversion failures, including more context and full exception information.
 - **Maintainability**: Replaced hardcoded API attribute strings (e.g., for firmware version) with constants from `const.py`.
+- **Entity Categorization**: Verified all sensors default to `entity_category = None`, which is appropriate for primary measurement sensors.
 
 ### 5. `coordinator.py`
-- **Refactoring**: Centralized TCP command sending logic by refactoring common operations into a new private helper method (`_send_tcp_command`), reducing code duplication.
+- **Refactoring**: Centralized TCP command sending logic by refactoring common operations into a new private helper method (`_send_tcp_command`), reducing code duplication and ensuring all TCP commands (including `move_axis`) use this helper.
 - **Robustness**:
     - Added detailed comments explaining the expected M661 (file list) response format.
     - Made M661 parsing more defensive with additional checks and improved warning/debug logging for unexpected scenarios.
@@ -85,3 +87,11 @@ This section details new sensors and functionalities added after the initial cod
 - This sensor reports whether bed leveling compensation is currently active on the printer.
 - The state is derived from the output of the `~M420 S0` G-code command (or a similar query).
 - An "on" state means bed leveling is active, and "off" means it is inactive.
+
+## Entity Categorization Update (User Request)
+
+- **Moved Diagnostic and Configuration Sensors to Main Panel**:
+    - Based on user feedback, all binary sensors previously categorized as `DIAGNOSTIC` or `CONFIG` have had their `entity_category` changed to `None`.
+    - This makes these sensors appear in the main "Sensors" panel in Home Assistant, rather than under "Diagnostic" or "Configuration" sections of the device page.
+    - Affected binary sensors include: "Connected", "Error", "Auto Shutdown Enabled", "External Fan Active", "Internal Fan Active", all Endstop sensors (X, Y, Z, Filament), and the "Bed Leveling Active" sensor.
+    - Regular sensors in `sensor.py` were verified to already default to `entity_category = None`.
