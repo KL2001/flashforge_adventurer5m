@@ -6,8 +6,19 @@ import voluptuous as vol
 
 from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
 from .coordinator import FlashforgeDataUpdateCoordinator
+from homeassistant.core import ServiceCall # For type hinting
 
 _LOGGER = logging.getLogger(__name__)
+
+# Service Attributes
+ATTR_FILE_PATH = "file_path"
+ATTR_PERCENTAGE = "percentage" # Added
+
+# Services
+SERVICE_DELETE_FILE = "delete_file"
+SERVICE_DISABLE_STEPPERS = "disable_steppers"
+SERVICE_ENABLE_STEPPERS = "enable_steppers"  # Added
+SERVICE_SET_SPEED_PERCENTAGE = "set_speed_percentage" # Added
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -113,6 +124,62 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # No explicit conversion needed due to vol.Coerce in schema
         await coordinator.move_axis(x=x, y=y, z=z, feedrate=feedrate)
 
+    async def handle_delete_file(call: ServiceCall) -> None:
+        """Handle the delete_file service call."""
+        # Simplified: using the first available coordinator.
+        # Assumes only one printer is configured.
+        # A more robust solution for multiple printers would involve targeting via device_id.
+        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
+            _LOGGER.error("Service 'delete_file' called, but no coordinators found.")
+            return
+
+        entry_id = list(hass.data[DOMAIN].keys())[0]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+
+        file_path = call.data.get(ATTR_FILE_PATH)
+        if not file_path: # Should be caught by schema, but good to double check
+            _LOGGER.error("Service 'delete_file' called without a file_path.")
+            return
+
+        _LOGGER.info(f"Service 'delete_file' called for file: {file_path}")
+        await coordinator.delete_file(file_path)
+
+    async def handle_disable_steppers(call: ServiceCall) -> None:
+        """Handle the disable_steppers service call."""
+        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
+            _LOGGER.error(f"Service '{SERVICE_DISABLE_STEPPERS}' called, but integration not ready or no coordinators found.")
+            return
+        entry_id = list(hass.data[DOMAIN].keys())[0]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        _LOGGER.info(f"Service '{SERVICE_DISABLE_STEPPERS}' called.")
+        await coordinator.disable_steppers()
+
+    async def handle_enable_steppers(call: ServiceCall) -> None:
+        """Handle the enable_steppers service call."""
+        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
+            _LOGGER.error(f"Service '{SERVICE_ENABLE_STEPPERS}' called, but integration not ready or no coordinators found.")
+            return
+        entry_id = list(hass.data[DOMAIN].keys())[0]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        _LOGGER.info(f"Service '{SERVICE_ENABLE_STEPPERS}' called.")
+        await coordinator.enable_steppers()
+
+    async def handle_set_speed_percentage(call: ServiceCall) -> None:
+        """Handle the set_speed_percentage service call."""
+        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
+            _LOGGER.error(f"Service '{SERVICE_SET_SPEED_PERCENTAGE}' called, but integration not ready or no coordinators found.")
+            return
+        entry_id = list(hass.data[DOMAIN].keys())[0]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+
+        percentage = call.data.get(ATTR_PERCENTAGE)
+        if percentage is None: # Schema ensures it's an int if present
+            _LOGGER.error(f"Service '{SERVICE_SET_SPEED_PERCENTAGE}' called without percentage.")
+            return
+
+        _LOGGER.info(f"Service '{SERVICE_SET_SPEED_PERCENTAGE}' called with percentage: {percentage}%")
+        await coordinator.set_speed_percentage(percentage)
+
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(
         DOMAIN,
@@ -120,7 +187,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         handle_start_print,
         schema=vol.Schema(
             {
-                vol.Required("file_path"): cv.string,
+                vol.Required(ATTR_FILE_PATH): cv.string, # Use ATTR_FILE_PATH
             }
         ),
     )
@@ -169,6 +236,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 vol.Optional("feedrate"): vol.Coerce(int),
             }
         ),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_DELETE_FILE,
+        handle_delete_file,
+        schema=vol.Schema(
+            {
+                vol.Required(ATTR_FILE_PATH): cv.string,
+            }
+        ),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_DISABLE_STEPPERS, handle_disable_steppers
+    ) # No schema needed as there are no fields
+    hass.services.async_register(
+        DOMAIN, SERVICE_ENABLE_STEPPERS, handle_enable_steppers
+    ) # No schema needed
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_SPEED_PERCENTAGE,
+        handle_set_speed_percentage,
+        schema=vol.Schema({
+            vol.Required(ATTR_PERCENTAGE): vol.All(vol.Coerce(int), vol.Range(min=10, max=500))
+        })
     )
 
     return True

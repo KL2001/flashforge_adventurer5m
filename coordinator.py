@@ -645,3 +645,39 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         action = f"MOVE AXIS ({', '.join(action_parts)})"
 
         return await self._send_tcp_command(command, action)
+
+    async def delete_file(self, file_path: str) -> bool:
+        """Deletes a file from the printer's storage using M30."""
+        command_file_path = file_path
+        if not (file_path.startswith(TCP_CMD_PRINT_FILE_PREFIX_ROOT) or \
+                file_path.startswith(TCP_CMD_PRINT_FILE_PREFIX_USER) or \
+                file_path.startswith("/data/")):
+            command_file_path = f"{TCP_CMD_PRINT_FILE_PREFIX_USER}{file_path}"
+        elif file_path.startswith("/data/"):
+            command_file_path = f"0:{file_path}"
+
+        command = f"~M30 {command_file_path}\r\n"
+        action = f"DELETE FILE ({command_file_path})"
+        return await self._send_tcp_command(command, action)
+
+    async def disable_steppers(self) -> bool:
+        """Disables all stepper motors on the printer (M18)."""
+        command = "~M18\r\n"
+        action = "DISABLE STEPPER MOTORS"
+        return await self._send_tcp_command(command, action)
+
+    async def enable_steppers(self) -> bool:
+        """Enables all stepper motors on the printer (M17)."""
+        command = "~M17\r\n"
+        action = "ENABLE STEPPER MOTORS"
+        return await self._send_tcp_command(command, action)
+
+    async def set_speed_percentage(self, percentage: int) -> bool:
+        """Sets the printer's speed factor override (M220 S<percentage>)."""
+        # Basic validation, though schema in __init__.py should also catch it.
+        if not 10 <= percentage <= 500: # Example range, adjust if printer has different limits
+            _LOGGER.error(f"Invalid speed percentage: {percentage}. Must be between 10 and 500 (example).")
+            return False
+        command = f"~M220 S{percentage}\r\n"
+        action = f"SET SPEED PERCENTAGE to {percentage}%"
+        return await self._send_tcp_command(command, action)
