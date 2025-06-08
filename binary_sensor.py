@@ -119,7 +119,7 @@ async def async_setup_entry(
             name="Connected",
             icon="mdi:connection",
             device_class=BinarySensorDeviceClass.CONNECTIVITY,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             connection_status_sensor=True,
         ),
         # Error status
@@ -128,7 +128,7 @@ async def async_setup_entry(
             name="Error",
             icon="mdi:alert-circle",
             device_class=BinarySensorDeviceClass.PROBLEM,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             error_sensor=True,
         ),
         # Auto Shutdown Enabled
@@ -137,7 +137,7 @@ async def async_setup_entry(
             name="Auto Shutdown Enabled",
             icon="mdi:timer-cog-outline",  # Or mdi:power-settings
             device_class=BinarySensorDeviceClass.POWER,
-            entity_category=EntityCategory.CONFIG,
+            entity_category=None,
             detail_attribute=API_ATTR_AUTO_SHUTDOWN,
             value_on=AUTO_SHUTDOWN_ENABLED_STATE,
         ),
@@ -147,7 +147,7 @@ async def async_setup_entry(
             name="External Fan Active",
             icon="mdi:fan",
             device_class=BinarySensorDeviceClass.RUNNING,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_EXTERNAL_FAN_STATUS,
             value_on=FAN_STATUS_ON_STATE,
         ),
@@ -157,7 +157,7 @@ async def async_setup_entry(
             name="Internal Fan Active",
             icon="mdi:fan-alert",  # Using a different fan icon for variety, or mdi:fan
             device_class=BinarySensorDeviceClass.RUNNING,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_INTERNAL_FAN_STATUS,
             value_on=FAN_STATUS_ON_STATE,
         ),
@@ -167,7 +167,7 @@ async def async_setup_entry(
             name=NAME_X_ENDSTOP,
             icon=ICON_X_ENDSTOP,
             device_class=None,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_X_ENDSTOP_STATUS,
             value_on=True, # Sensor is "on" (problem/triggered) if M119 reports triggered (True)
         ),
@@ -176,7 +176,7 @@ async def async_setup_entry(
             name=NAME_Y_ENDSTOP,
             icon=ICON_Y_ENDSTOP,
             device_class=None,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_Y_ENDSTOP_STATUS,
             value_on=True,
         ),
@@ -185,7 +185,7 @@ async def async_setup_entry(
             name=NAME_Z_ENDSTOP,
             icon=ICON_Z_ENDSTOP,
             device_class=None,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_Z_ENDSTOP_STATUS,
             value_on=True,
         ),
@@ -194,7 +194,7 @@ async def async_setup_entry(
             name=NAME_FILAMENT_ENDSTOP,
             icon=ICON_FILAMENT_ENDSTOP,
             device_class=BinarySensorDeviceClass.TAMPER, # Or None, or MOISTURE if it's a runout sensor
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_FILAMENT_ENDSTOP_STATUS,
             value_on=True, # Assuming 'triggered' means problem (filament out)
         ),
@@ -204,7 +204,7 @@ async def async_setup_entry(
             name=NAME_BED_LEVELING,
             icon=ICON_BED_LEVELING,
             device_class=None,
-            entity_category=EntityCategory.DIAGNOSTIC,
+            entity_category=None,
             detail_attribute=API_ATTR_BED_LEVELING_STATUS,
             value_on=True
         ),
