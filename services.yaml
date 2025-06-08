@@ -150,3 +150,39 @@ move_axis:
           min: 0 # Feedrate usually must be positive, coordinator may enforce
           mode: box
           unit_of_measurement: "mm/min"
+
+delete_file:
+  name: Delete File
+  description: Deletes a specified file from the printer's storage. The file path should be relative to the user directory (e.g., 'my_model.gcode') or an absolute path from the printer's data root if known (e.g., '/data/user/my_model.gcode').
+  fields:
+    file_path:
+      name: File Path
+      description: "The path of the file to delete. Examples: 'test.gcode', '/data/user/test.gcode'."
+      required: true
+      selector:
+        text:
+
+disable_steppers:
+  name: Disable Stepper Motors
+  description: Disables all stepper motors on the printer (M18). This allows manual movement of axes but they will re-engage on the next motion command.
+  fields: {} # No fields needed
+
+enable_steppers:
+  name: Enable Stepper Motors
+  description: Enables all stepper motors on the printer (M17). Stepper motors are typically enabled automatically when a motion command is sent.
+  fields: {} # No fields needed
+
+set_speed_percentage:
+  name: Set Speed Percentage
+  description: Sets the printer's speed factor override (feedrate percentage via M220). Example: S100 is normal speed, S150 is 150%.
+  fields:
+    percentage:
+      name: Percentage
+      description: "Speed percentage (e.g., 100 for normal, 150 for 150%). Valid range typically 10-500, but consult printer docs."
+      required: true
+      selector:
+        number:
+          min: 10  # Example practical minimum
+          max: 500 # Example practical maximum
+          mode: slider
+          unit_of_measurement: "%"
