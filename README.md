@@ -11,7 +11,7 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
   - View firmware version, IP/MAC address, and other diagnostic details.
   - Get current X, Y, Z nozzle positions (in mm).
   - List printable files available on the printer (via the "Printable Files Count" sensor's attributes).
-  - Binary sensor states for: Connection, Error, Door Open, Light On (actual light), Auto Shutdown Enabled, External Fan Active, Internal Fan Active.
+  - Binary sensor states for: Connection, Error, Door Open, Light On (actual light), Auto Shutdown Enabled, External Fan Active, Internal Fan Active, Endstops (X, Y, Z, Filament), Bed Leveling Status.
 - **View Camera Feed**
   - Access live camera feed from the printer's webcam.
 - **Control Printer Operations (primarily via TCP M-codes on port 8899):**
@@ -23,11 +23,19 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
   - Set target temperatures for the extruder and heated bed (`set_extruder_temperature`, `set_bed_temperature`).
   - Control the part cooling fan speed, including turning it off (`set_fan_speed`, `turn_fan_off`).
   - Move individual axes for jogging/manual positioning (`move_axis`).
+  - Enable/Disable stepper motors (`enable_steppers`, `disable_steppers`).
+  - Set print speed percentage (`set_speed_percentage`).
+  - Delete files from printer storage (`delete_file` - *Note: This service was commented out in `services.yaml` as per user request in a later step, but the backend implementation exists.*).
 
-## Planned Features
+## Planned Features (or Not Yet Implemented)
+- Print Notifications (e.g., on completion).
+- Set Flow Percentage (`set_flow_percentage`).
+- Home Axes (`home_axes`).
+- Filament Change procedure (`filament_change`).
+- Save Settings to EEPROM (`save_settings`).
+- Restore Factory Settings.
+- Emergency Stop.
 
-- **Print Notifications**
-  - Receive alerts on print completion.
 
 ## Requirements
 
@@ -78,70 +86,36 @@ You can control your Flashforge Adventurer 5M Pro using various services provide
     *   Toggles the printer's chamber light.
     *   **Parameters:**
         *   `state` (boolean, required): `true` to turn on, `false` to turn off.
-    *   **Example:**
-      ```yaml
-      service: flashforge_adventurer5m.toggle_light
-      data:
-        state: true
-      ```
 
 **Print Job Management:**
 *   `flashforge_adventurer5m.start_print`
     *   Starts printing a specified file from the printer's storage. The path should match those reported by the "Printable Files Count" sensor's attributes (e.g., `/data/yourfile.gcode`).
     *   **Parameters:**
         *   `file_path` (string, required): Path to the G-code file on the printer (e.g., `/data/yourfile.gcode`).
-    *   **Example:**
-      ```yaml
-      service: flashforge_adventurer5m.start_print
-      data:
-        file_path: "/data/test_model.gcode" # Note: M23 prepends "0:/user" or "0:"
-      ```
 *   `flashforge_adventurer5m.pause_print`
     *   Pauses the current print job.
-    *   No parameters.
 *   `flashforge_adventurer5m.resume_print`
     *   Resumes a paused print job.
-    *   No parameters.
 *   `flashforge_adventurer5m.cancel_print`
     *   Cancels the ongoing print job.
-    *   No parameters.
 
 **Temperature Control:**
 *   `flashforge_adventurer5m.set_extruder_temperature`
     *   Sets the target temperature for the extruder.
     *   **Parameters:**
         *   `temperature` (integer, required): Target temperature in Celsius.
-    *   **Example:**
-      ```yaml
-      service: flashforge_adventurer5m.set_extruder_temperature
-      data:
-        temperature: 215
-      ```
 *   `flashforge_adventurer5m.set_bed_temperature`
     *   Sets the target temperature for the heated bed.
     *   **Parameters:**
         *   `temperature` (integer, required): Target temperature in Celsius.
-    *   **Example:**
-      ```yaml
-      service: flashforge_adventurer5m.set_bed_temperature
-      data:
-        temperature: 60
-      ```
 
 **Fan Control:**
 *   `flashforge_adventurer5m.set_fan_speed`
     *   Sets the speed of the part cooling fan.
     *   **Parameters:**
         *   `speed` (integer, required): Fan speed from 0 (off) to 255 (full speed).
-    *   **Example:**
-      ```yaml
-      service: flashforge_adventurer5m.set_fan_speed
-      data:
-        speed: 128 # Set fan to 50%
-      ```
 *   `flashforge_adventurer5m.turn_fan_off`
     *   Turns the part cooling fan off.
-    *   No parameters.
 
 **Axis Movement (Jogging):**
 *   `flashforge_adventurer5m.move_axis`
@@ -151,14 +125,31 @@ You can control your Flashforge Adventurer 5M Pro using various services provide
         *   `y` (float, optional): Target Y-axis coordinate in mm.
         *   `z` (float, optional): Target Z-axis coordinate in mm.
         *   `feedrate` (integer, optional): Speed of movement in mm/minute.
-    *   **Example (move X and Y):**
-      ```yaml
-      service: flashforge_adventurer5m.move_axis
-      data:
-        x: 100
-        y: 50
-        feedrate: 1500
-      ```
+
+**Stepper Motor Control:**
+*   `flashforge_adventurer5m.disable_steppers`
+    *   Disables all stepper motors (M18). Axes can be moved manually. Motors re-engage on next motion command.
+*   `flashforge_adventurer5m.enable_steppers`
+    *   Enables all stepper motors (M17). Usually not needed as motors engage automatically.
+
+**Print Speed Control:**
+*   `flashforge_adventurer5m.set_speed_percentage`
+    *   Sets the printer's speed factor override (M220).
+    *   **Parameters:**
+        *   `percentage` (integer, required): Speed percentage (e.g., 100 for normal, 150 for 150%).
+
+**File Management (Note: `delete_file` service is currently commented out in `services.yaml`)**
+*   `flashforge_adventurer5m.delete_file` (Planned / Implemented but Inactive)
+    *   Deletes a specified file from the printer's storage.
+    *   **Parameters:**
+        *   `file_path` (string, required): The path of the file to delete.
+
+**Other Planned Services (Not yet implemented):**
+*   `set_flow_percentage`
+*   `home_axes`
+*   `filament_change`
+*   `save_settings`
+
 
 ## Troubleshooting
 
