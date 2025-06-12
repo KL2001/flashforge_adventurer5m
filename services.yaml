@@ -117,50 +117,37 @@ move_axis:
       name: X Coordinate
       description: Target X-axis coordinate in mm.
       optional: true
-      example: 100.0
       selector:
-        number:
-          mode: box
-          step: 0.1 # Allow for fine control
+        number: {} # Simplified selector
     y:
       name: Y Coordinate
       description: Target Y-axis coordinate in mm.
       optional: true
-      example: 100.0
       selector:
-        number:
-          mode: box
-          step: 0.1
+        number: {} # Simplified selector
     z:
       name: Z Coordinate
       description: Target Z-axis coordinate in mm.
       optional: true
-      example: 50.0
       selector:
-        number:
-          mode: box
-          step: 0.1
+        number: {} # Simplified selector
     feedrate:
       name: Feedrate
       description: Speed of movement in mm/minute. Printer's default if not specified.
       optional: true
-      example: 3000
       selector:
-        number:
-          min: 0 # Feedrate usually must be positive, coordinator may enforce
-          mode: box
-          unit_of_measurement: "mm/min"
+        number: {} # Simplified selector
 
-# delete_file:
-#   name: Delete File
-#   description: Deletes a specified file from the printer's storage. The file path should be relative to the user directory (e.g., 'my_model.gcode') or an absolute path from the printer's data root if known (e.g., '/data/user/my_model.gcode').
-#   fields:
-#     file_path:
-#       name: File Path
-#       description: "The path of the file to delete. Examples: 'test.gcode', '/data/user/test.gcode'."
-#       required: true
-#       selector:
-#         text:
+delete_file:
+  name: Delete File
+  description: Deletes a specified file from the printer's storage. The file path should be relative to the user directory (e.g., 'my_model.gcode') or an absolute path like '/data/user/my_model.gcode'.
+  fields:
+    file_path:
+      name: File Path
+      description: "The path of the file to delete. Examples: 'test.gcode', '/data/user/test.gcode'."
+      required: true
+      selector:
+        text:
 
 disable_steppers:
   name: Disable Stepper Motors
@@ -187,50 +174,60 @@ set_speed_percentage:
           mode: slider
           unit_of_measurement: "%"
 
-# set_flow_percentage:
-#   name: Set Flow Percentage
-#   description: Sets the printer's extrusion flow rate percentage (M221 S<percentage>). Example: S100 is normal flow, S95 is 95% flow.
-#   fields:
-#     percentage:
-#       name: Percentage
-#       description: "Flow percentage (e.g., 100 for normal, 95 for 95%). Valid range typically 50-200, but consult printer docs."
-#       required: true
-#       selector:
-#         number:
-#           min: 50  # Example practical minimum
-#           max: 200 # Example practical maximum
-#           mode: slider
-#           unit_of_measurement: "%"
+set_flow_percentage:
+  name: Set Flow Percentage
+  description: Sets the printer's extrusion flow rate percentage (M221 S<percentage>). Example: S100 is normal flow.
+  fields:
+    percentage:
+      name: Percentage
+      description: "Flow percentage (e.g., 100 for normal). Typical range 50-200."
+      required: true
+      selector:
+        number:
+          min: 50
+          max: 200
+          mode: slider
+          unit_of_measurement: "%"
 
-# home_axes:
-#   name: Home Axes
-#   description: Homes one or more axes (G28). If no axes are specified, all axes are homed.
-#   fields:
-#     x:
-#       name: Home X-axis
-#       description: "Set to true to home the X-axis."
-#       required: false
-#       selector:
-#         boolean:
-#     y:
-#       name: Home Y-axis
-#       description: "Set to true to home the Y-axis."
-#       required: false
-#       selector:
-#         boolean:
-#     z:
-#       name: Home Z-axis
-#       description: "Set to true to home the Z-axis."
-#       required: false
-#       selector:
-#         boolean:
+home_axes:
+  name: Home Axes
+  description: Homes one or more axes (G28). If no axes are specified, all axes are homed.
+  fields:
+    x:
+      name: Home X-axis
+      description: "Set to true to include X-axis in homing."
+      optional: true
+      selector:
+        boolean:
+    y:
+      name: Home Y-axis
+      description: "Set to true to include Y-axis in homing."
+      optional: true
+      selector:
+        boolean:
+    z:
+      name: Home Z-axis
+      description: "Set to true to include Z-axis in homing."
+      optional: true
+      selector:
+        boolean:
 
-# filament_change:
-#   name: Filament Change
-#   description: Initiates the filament change procedure (M600). Behavior depends on printer firmware.
-#   fields: {}
+filament_change:
+  name: Filament Change
+  description: Initiates the filament change procedure (M600). Behavior depends on printer firmware.
+  fields: {}
 
-# save_settings:
-#   name: Save Settings
-#   description: Saves current settings to EEPROM (M500).
-#   fields: {}
+emergency_stop:
+  name: Emergency Stop
+  description: Immediately halts all printer operations (M112). Use with extreme caution.
+  fields: {}
+
+save_settings:
+  name: Save Settings
+  description: Saves current settings to printer's EEPROM (M500).
+  fields: {}
+
+restore_factory_settings:
+  name: Restore Factory Settings
+  description: Restores printer to factory default settings (M502). Use with extreme caution; this may erase calibration.
+  fields: {}

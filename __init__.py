@@ -12,13 +12,22 @@ _LOGGER = logging.getLogger(__name__)
 
 # Service Attributes
 ATTR_FILE_PATH = "file_path"
-ATTR_PERCENTAGE = "percentage" # Added
+ATTR_PERCENTAGE = "percentage"
+ATTR_HOME_X = "x"
+ATTR_HOME_Y = "y"
+ATTR_HOME_Z = "z"
 
 # Services
 SERVICE_DELETE_FILE = "delete_file"
 SERVICE_DISABLE_STEPPERS = "disable_steppers"
-SERVICE_ENABLE_STEPPERS = "enable_steppers"  # Added
-SERVICE_SET_SPEED_PERCENTAGE = "set_speed_percentage" # Added
+SERVICE_ENABLE_STEPPERS = "enable_steppers"
+SERVICE_SET_SPEED_PERCENTAGE = "set_speed_percentage"
+SERVICE_SET_FLOW_PERCENTAGE = "set_flow_percentage"
+SERVICE_HOME_AXES = "home_axes"
+SERVICE_FILAMENT_CHANGE = "filament_change"
+SERVICE_EMERGENCY_STOP = "emergency_stop"
+SERVICE_SAVE_SETTINGS = "save_settings"
+SERVICE_RESTORE_FACTORY_SETTINGS = "restore_factory_settings"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -180,6 +189,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info(f"Service '{SERVICE_SET_SPEED_PERCENTAGE}' called with percentage: {percentage}%")
         await coordinator.set_speed_percentage(percentage)
 
+    async def handle_set_flow_percentage(call: ServiceCall) -> None:
+        """Handle the set_flow_percentage service call."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        percentage = call.data.get(ATTR_PERCENTAGE)
+        if percentage is None:
+            _LOGGER.error(f"Service '{SERVICE_SET_FLOW_PERCENTAGE}' called without percentage.")
+            return
+        _LOGGER.info(f"Service '{SERVICE_SET_FLOW_PERCENTAGE}' called with percentage: {percentage}%")
+        await coordinator.set_flow_percentage(percentage)
+
+    async def handle_home_axes(call: ServiceCall) -> None:
+        """Handle the home_axes service call."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        axes_to_home = []
+        if call.data.get(ATTR_HOME_X): axes_to_home.append("X")
+        if call.data.get(ATTR_HOME_Y): axes_to_home.append("Y")
+        if call.data.get(ATTR_HOME_Z): axes_to_home.append("Z")
+        _LOGGER.info(f"Service '{SERVICE_HOME_AXES}' called for axes: {axes_to_home if axes_to_home else 'All'}")
+        await coordinator.home_axes(axes_to_home if axes_to_home else None)
+
+    async def handle_filament_change(call: ServiceCall) -> None:
+        """Handle the filament_change service call."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_FILAMENT_CHANGE}' called.")
+        await coordinator.filament_change()
+
+    async def handle_emergency_stop(call: ServiceCall) -> None:
+        """Handle the emergency_stop service call."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.warning(f"Service '{SERVICE_EMERGENCY_STOP}' called. Printer will halt immediately.")
+        await coordinator.emergency_stop()
+
+    async def handle_save_settings(call: ServiceCall) -> None:
+        """Handle the save_settings service call."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_SAVE_SETTINGS}' called.")
+        await coordinator.save_settings()
+
+    async def handle_restore_factory_settings(call: ServiceCall) -> None:
+        """Handle the restore_factory_settings service call."""
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.warning(f"Service '{SERVICE_RESTORE_FACTORY_SETTINGS}' called. This may erase calibration and settings.")
+        await coordinator.restore_factory_settings()
+
     hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
     hass.services.async_register(
         DOMAIN,
@@ -261,6 +314,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             vol.Required(ATTR_PERCENTAGE): vol.All(vol.Coerce(int), vol.Range(min=10, max=500))
         })
     )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_FLOW_PERCENTAGE, handle_set_flow_percentage,
+        schema=vol.Schema({vol.Required(ATTR_PERCENTAGE): vol.All(vol.Coerce(int), vol.Range(min=50, max=200))})
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_HOME_AXES, handle_home_axes,
+        schema=vol.Schema({
+            vol.Optional(ATTR_HOME_X, default=False): cv.boolean,
+            vol.Optional(ATTR_HOME_Y, default=False): cv.boolean,
+            vol.Optional(ATTR_HOME_Z, default=False): cv.boolean,
+        })
+    )
+    hass.services.async_register(DOMAIN, SERVICE_FILAMENT_CHANGE, handle_filament_change)
+    hass.services.async_register(DOMAIN, SERVICE_EMERGENCY_STOP, handle_emergency_stop)
+    hass.services.async_register(DOMAIN, SERVICE_SAVE_SETTINGS, handle_save_settings)
+    hass.services.async_register(DOMAIN, SERVICE_RESTORE_FACTORY_SETTINGS, handle_restore_factory_settings)
 
     return True
 
