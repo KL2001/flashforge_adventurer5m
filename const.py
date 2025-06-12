@@ -117,5 +117,3 @@ NAME_BED_LEVELING = "Bed Leveling Active"
 
 # Bed Leveling Sensor Icon
 ICON_BED_LEVELING = "mdi:checkerboard" # Or mdi:format-list-bulleted-type
-
-# Units
