@@ -18,6 +18,16 @@ ATTR_HOME_Y = "y"
 ATTR_HOME_Z = "z"
 
 # Services
+SERVICE_PAUSE_PRINT = "pause_print" # Added for service list
+SERVICE_START_PRINT = "start_print" # Added for service list
+SERVICE_CANCEL_PRINT = "cancel_print" # Added for service list
+SERVICE_TOGGLE_LIGHT = "toggle_light" # Added for service list
+SERVICE_RESUME_PRINT = "resume_print" # Added for service list
+SERVICE_SET_EXTRUDER_TEMPERATURE = "set_extruder_temperature" # Added for service list
+SERVICE_SET_BED_TEMPERATURE = "set_bed_temperature" # Added for service list
+SERVICE_SET_FAN_SPEED = "set_fan_speed" # Added for service list
+SERVICE_TURN_FAN_OFF = "turn_fan_off" # Added for service list
+SERVICE_MOVE_AXIS = "move_axis" # Added for service list
 SERVICE_DELETE_FILE = "delete_file"
 SERVICE_DISABLE_STEPPERS = "disable_steppers"
 SERVICE_ENABLE_STEPPERS = "enable_steppers"
@@ -28,6 +38,9 @@ SERVICE_FILAMENT_CHANGE = "filament_change"
 SERVICE_EMERGENCY_STOP = "emergency_stop"
 SERVICE_SAVE_SETTINGS = "save_settings"
 SERVICE_RESTORE_FACTORY_SETTINGS = "restore_factory_settings"
+
+# Platforms
+PLATFORMS = ["sensor", "camera", "binary_sensor"] # Define PLATFORMS
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -338,11 +351,29 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """
     Handle removal/unloading of a config entry.
     """
-    unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, ["sensor", "camera", "binary_sensor"]
-    )
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        if not hass.data[DOMAIN]:  # If this was the last entry for this domain
+            _LOGGER.info(
+                "Last entry for domain %s unloaded; unregistering services.", DOMAIN
+            )
+            all_service_names = [
+                SERVICE_PAUSE_PRINT, SERVICE_START_PRINT, SERVICE_CANCEL_PRINT,
+                SERVICE_TOGGLE_LIGHT, SERVICE_RESUME_PRINT,
+                SERVICE_SET_EXTRUDER_TEMPERATURE, SERVICE_SET_BED_TEMPERATURE,
+                SERVICE_SET_FAN_SPEED, SERVICE_TURN_FAN_OFF, SERVICE_MOVE_AXIS,
+                SERVICE_DELETE_FILE, SERVICE_DISABLE_STEPPERS, SERVICE_ENABLE_STEPPERS,
+                SERVICE_SET_SPEED_PERCENTAGE, SERVICE_SET_FLOW_PERCENTAGE,
+                SERVICE_HOME_AXES, SERVICE_FILAMENT_CHANGE, SERVICE_EMERGENCY_STOP,
+                SERVICE_SAVE_SETTINGS, SERVICE_RESTORE_FACTORY_SETTINGS,
+            ]
+            for service_name in all_service_names:
+                if service_name:  # Should always be true if constants are defined
+                    _LOGGER.debug("Unregistering service: %s.%s", DOMAIN, service_name)
+                    hass.services.async_remove(DOMAIN, service_name)
+
+            hass.data.pop(DOMAIN) # Remove the domain from hass.data completely
 
     return unload_ok
