@@ -8,7 +8,7 @@ import asyncio
 import logging
 import re  # For parsing M114
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any, Optional, List # Added List
 
 import aiohttp
 
@@ -645,3 +645,90 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         action = f"MOVE AXIS ({', '.join(action_parts)})"
 
         return await self._send_tcp_command(command, action)
+
+    async def delete_file(self, file_path: str) -> bool:
+        """Deletes a file from the printer's storage using M30."""
+        command_file_path = file_path
+        if not (file_path.startswith(TCP_CMD_PRINT_FILE_PREFIX_ROOT) or \
+                file_path.startswith(TCP_CMD_PRINT_FILE_PREFIX_USER) or \
+                file_path.startswith("/data/")):
+            command_file_path = f"{TCP_CMD_PRINT_FILE_PREFIX_USER}{file_path}"
+        elif file_path.startswith("/data/"):
+            command_file_path = f"0:{file_path}"
+
+        command = f"~M30 {command_file_path}\r\n"
+        action = f"DELETE FILE ({command_file_path})"
+        return await self._send_tcp_command(command, action)
+
+    async def disable_steppers(self) -> bool:
+        """Disables all stepper motors on the printer (M18)."""
+        command = "~M18\r\n"
+        action = "DISABLE STEPPER MOTORS"
+        return await self._send_tcp_command(command, action)
+
+    async def enable_steppers(self) -> bool:
+        """Enables all stepper motors on the printer (M17)."""
+        command = "~M17\r\n"
+        action = "ENABLE STEPPER MOTORS"
+        return await self._send_tcp_command(command, action)
+
+    async def set_speed_percentage(self, percentage: int) -> bool:
+        """Sets the printer's speed factor override (M220 S<percentage>)."""
+        # Basic validation, though schema in __init__.py should also catch it.
+        if not 10 <= percentage <= 500: # Example range, adjust if printer has different limits
+            _LOGGER.error(f"Invalid speed percentage: {percentage}. Must be between 10 and 500 (example).")
+            return False
+        command = f"~M220 S{percentage}\r\n"
+        action = f"SET SPEED PERCENTAGE to {percentage}%"
+        return await self._send_tcp_command(command, action)
+
+    async def set_flow_percentage(self, percentage: int) -> bool:
+        """Sets the printer's flow rate percentage using M221."""
+        if not 50 <= percentage <= 200: # Example range
+            _LOGGER.error(f"Invalid flow percentage: {percentage}. Must be between 50 and 200.")
+            return False
+        command = f"~M221 S{percentage}\r\n"
+        action = f"SET FLOW PERCENTAGE to {percentage}%"
+        return await self._send_tcp_command(command, action)
+
+    async def home_axes(self, axes: Optional[List[str]] = None) -> bool:
+        """Homes specified axes or all axes if None using G28."""
+        command = "~G28"
+        action_detail = "ALL AXES"
+        if axes and isinstance(axes, list) and len(axes) > 0:
+            # Filter for valid axes and join them, e.g., "G28 XY"
+            valid_axes_to_home = "".join(ax.upper() for ax in axes if ax.upper() in ["X", "Y", "Z"])
+            if valid_axes_to_home: # Only add if there are valid axes
+                command += f" {valid_axes_to_home}"
+                action_detail = f"{valid_axes_to_home} AXES"
+        command += "\r\n"
+        action = f"HOME {action_detail}"
+        return await self._send_tcp_command(command, action)
+
+    async def filament_change(self) -> bool:
+        """Initiates filament change procedure using M600."""
+        command = "~M600\r\n"
+        action = "FILAMENT CHANGE (M600)"
+        return await self._send_tcp_command(command, action)
+
+    async def emergency_stop(self) -> bool:
+        """Sends emergency stop command M112."""
+        command = "~M112\r\n"
+        action = "EMERGENCY STOP (M112)"
+        # M112 might not send an 'ok', printer might just halt or restart.
+        # Consider if a different response_terminator or no terminator is needed.
+        # For now, using default which might result in a timeout/false negative if printer halts before 'ok'.
+        return await self._send_tcp_command(command, action, response_terminator="ok\r\n")
+
+    async def save_settings(self) -> bool:
+        """Saves settings to EEPROM using M500."""
+        command = "~M500\r\n"
+        action = "SAVE SETTINGS TO EEPROM (M500)"
+        return await self._send_tcp_command(command, action)
+
+    async def restore_factory_settings(self) -> bool:
+        """Restores factory settings using M502."""
+        command = "~M502\r\n"
+        action = "RESTORE FACTORY SETTINGS (M502)"
+        # M502 might also have non-standard response or cause a restart.
+        return await self._send_tcp_command(command, action, response_terminator="ok\r\n")

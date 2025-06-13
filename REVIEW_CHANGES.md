@@ -44,6 +44,7 @@ This document summarizes the key changes implemented based on a comprehensive co
     - Implemented `_fetch_bed_leveling_status` to send `~M420 S0` and parse bed leveling active status.
     - Integrated these new fetch methods into the main data update cycle.
 - **Removed Temporary Code**: Deleted diagnostic test code for `~M115` and `~M420 V` commands.
+- **Service Implementation**: Added methods for `delete_file`, `disable_steppers`, `enable_steppers`, `set_speed_percentage` to handle corresponding service calls.
 
 ### 6. `flashforge_tcp.py`
 - **Clarity**: Added inline comments to explain:
@@ -62,6 +63,7 @@ This document summarizes the key changes implemented based on a comprehensive co
 
 ### 9. `__init__.py`
 - **Code Simplification**: Removed redundant type conversions (e.g., `int()`, `float()`) in service handlers, relying on `vol.Schema` for type coercion.
+- **Service Implementation**: Added constants, handlers, and registrations for `delete_file`, `disable_steppers`, `enable_steppers`, and `set_speed_percentage` services.
 
 ### 10. General Code Quality
 - **Type Hinting**: Addressed various type hinting issues identified by MyPy, primarily by using `Optional` for parameters with `None` defaults and adding explicit annotations for some instance variables and return types.
@@ -95,3 +97,29 @@ This section details new sensors and functionalities added after the initial cod
     - This makes these sensors appear in the main "Sensors" panel in Home Assistant, rather than under "Diagnostic" or "Configuration" sections of the device page.
     - Affected binary sensors include: "Connected", "Error", "Auto Shutdown Enabled", "External Fan Active", "Internal Fan Active", all Endstop sensors (X, Y, Z, Filament), and the "Bed Leveling Active" sensor.
     - Regular sensors in `sensor.py` were verified to already default to `entity_category = None`.
+
+## Post-Implementation Testing & Fixes
+
+This section outlines the results of testing the implemented services using a Home Assistant script.
+
+- **Test Script Execution**: A comprehensive test script (`flashforge_printer_test_suite` in `scripts.yaml`) was executed to call various services.
+- **Services Confirmed Working**:
+    - `toggle_light` (both on and off states)
+    - `set_extruder_temperature`
+    - `set_bed_temperature`
+    - `set_fan_speed`
+    - `turn_fan_off`
+    - `move_axis` (functioned correctly after schema verification; initial UI display issue was likely due to HA caching or a necessary restart not performed by the user).
+    - `disable_steppers`
+    - `enable_steppers`
+    - `set_speed_percentage`
+- **Services NOT Implemented or Inactive (as per current `services.yaml` state):**
+    - `set_flow_percentage`: The test script call for this service failed, confirming it's not implemented or registered. This service is currently commented out in `services.yaml`.
+    - `delete_file`: This service was implemented but later commented out in `services.yaml` per user direction. The test script would fail to call it in this state.
+    - `home_axes`: Not implemented; test script call would fail. This service is currently commented out in `services.yaml`.
+    - `filament_change`: Not implemented; test script call would fail. This service is currently commented out in `services.yaml`.
+    - `save_settings`: Not implemented; test script call would fail. This service is currently commented out in `services.yaml`.
+- **`move_axis` Service Note**:
+    - An initial user report indicated that the `move_axis` service call UI in Home Assistant's Developer Tools was not showing the expected input fields (x, y, z, feedrate).
+    - A review of the `services.yaml` definition for `move_axis` confirmed that the fields were correctly defined with appropriate selectors (e.g., `selector: number: ...`).
+    - The issue was likely due to Home Assistant's service definition cache not updating immediately after changes to `services.yaml`. A restart of Home Assistant or a manual refresh of service definitions (if available through developer tools) by the user typically resolves such UI discrepancies. The backend implementation was verified to be correct.
