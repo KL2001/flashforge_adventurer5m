@@ -212,6 +212,7 @@ home_axes:
       selector:
         boolean:
 
+# Existing services (verified)
 filament_change:
   name: Filament Change
   description: Initiates the filament change procedure (M600). Behavior depends on printer firmware.
@@ -222,12 +223,61 @@ emergency_stop:
   description: Immediately halts all printer operations (M112). Use with extreme caution.
   fields: {}
 
-save_settings:
-  name: Save Settings
-  description: Saves current settings to printer's EEPROM (M500).
+# Updated service name and definition
+save_settings_to_eeprom: # Renamed from save_settings
+  name: Save Settings to EEPROM
+  description: Saves current settings to printer's EEPROM (via M500).
   fields: {}
 
 restore_factory_settings:
   name: Restore Factory Settings
   description: Restores printer to factory default settings (M502). Use with extreme caution; this may erase calibration.
+  fields: {}
+
+# New service definitions
+list_files:
+  name: List Files
+  description: "Lists files on the printer's storage (via M20). The full list is logged at DEBUG level by the integration, a summary may be logged at INFO level."
+  fields: {}
+
+report_firmware_capabilities:
+  name: Report Firmware Capabilities
+  description: "Requests and logs the printer's firmware version and capabilities (via M115). The full report is logged at DEBUG level, a summary may be logged at INFO level."
+  fields: {}
+
+play_beep:
+  name: Play Beep
+  description: "Plays a beep sound on the printer (via M300)."
+  fields:
+    pitch:
+      name: "Pitch"
+      description: "Frequency of the beep in Hz."
+      required: true
+      example: 1000
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+          unit_of_measurement: "Hz"
+    duration:
+      name: "Duration"
+      description: "Duration of the beep in milliseconds."
+      required: true
+      example: 500
+      selector:
+        number:
+          min: 0
+          max: 10000
+          mode: box
+          unit_of_measurement: "ms"
+
+start_bed_leveling:
+  name: Start Bed Leveling
+  description: "Initiates the automatic bed leveling procedure (via G29). Behavior can vary based on printer firmware."
+  fields: {}
+
+read_settings_from_eeprom:
+  name: Read Settings from EEPROM
+  description: "Reads current settings from EEPROM (via M501) and logs them. The full output is logged at DEBUG level, a summary may be logged at INFO level."
   fields: {}
