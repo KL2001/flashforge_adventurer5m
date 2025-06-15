@@ -155,7 +155,7 @@ async def async_setup_entry(
         FlashforgeBinarySensor(
             coordinator=coordinator,
             name="Internal Fan Active",
-            icon="mdi:fan-alert",  # Using a different fan icon for variety, or mdi:fan
+            icon="mdi:fan",
             device_class=BinarySensorDeviceClass.RUNNING,
             entity_category=None,
             detail_attribute=API_ATTR_INTERNAL_FAN_STATUS,
@@ -193,7 +193,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             name=NAME_FILAMENT_ENDSTOP,
             icon=ICON_FILAMENT_ENDSTOP,
-            device_class=BinarySensorDeviceClass.TAMPER, # Or None, or MOISTURE if it's a runout sensor
+            device_class=BinarySensorDeviceClass.PROBLEM, # Or None, or MOISTURE if it's a runout sensor
             entity_category=None,
             detail_attribute=API_ATTR_FILAMENT_ENDSTOP_STATUS,
             value_on=True, # Assuming 'triggered' means problem (filament out)
