@@ -720,11 +720,66 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         # For now, using default which might result in a timeout/false negative if printer halts before 'ok'.
         return await self._send_tcp_command(command, action, response_terminator="ok\r\n")
 
-    async def save_settings(self) -> bool:
+    async def list_files(self) -> bool:
+        """Lists files on the printer's storage using M20."""
+        command = "~M20\r\n"
+        action = "LIST FILES (M20)"
+        _LOGGER.info(f"Attempting to {action}")
+        success, response = await self._send_tcp_command(command, action)
+        if success:
+            _LOGGER.info(f"Successfully received file list response for M20. Full response logged at DEBUG level by TCP client. Response snippet: {response[:200]}...")
+        # For now, just log; detailed parsing can be added later.
+        # _LOGGER.info(f"M20 (List Files) Response:\n{response}") # Alternative: log full response here
+        return success
+
+    async def report_firmware_capabilities(self) -> bool:
+        """Reports firmware capabilities using M115."""
+        command = "~M115\r\n"
+        action = "REPORT FIRMWARE CAPABILITIES (M115)"
+        _LOGGER.info(f"Attempting to {action}")
+        success, response = await self._send_tcp_command(command, action)
+        if success:
+            _LOGGER.info(f"Successfully received firmware capabilities response for M115. Full response logged at DEBUG level by TCP client. Response snippet: {response[:200]}...")
+        # _LOGGER.info(f"M115 (Firmware Capabilities) Response:\n{response}")
+        return success
+
+    async def play_beep(self, pitch: int, duration: int) -> bool:
+        """Plays a beep sound using M300."""
+        # Basic input validation
+        if not (0 <= pitch <= 10000):  # Example range for pitch in Hz
+            _LOGGER.warning(f"Pitch {pitch} Hz is out of typical range (0-10000 Hz). Proceeding anyway.")
+        if not (0 <= duration <= 10000):  # Example range for duration in ms
+            _LOGGER.warning(f"Duration {duration} ms is out of typical range (0-10000 ms). Proceeding anyway.")
+
+        command = f"~M300 S{pitch} P{duration}\r\n"
+        action = f"PLAY BEEP (Pitch: {pitch}, Duration: {duration})"
+        # _LOGGER.info(f"Attempting to {action}") # _send_tcp_command already logs this
+        return await self._send_tcp_command(command, action)
+
+    async def start_bed_leveling(self) -> bool:
+        """Starts the bed leveling process using G29."""
+        command = "~G29\r\n"
+        action = "START BED LEVELING (G29)"
+        # _LOGGER.info(f"Attempting to {action}")
+        return await self._send_tcp_command(command, action)
+
+    async def save_settings_to_eeprom(self) -> bool:
         """Saves settings to EEPROM using M500."""
         command = "~M500\r\n"
         action = "SAVE SETTINGS TO EEPROM (M500)"
+        # _LOGGER.info(f"Attempting to {action}")
         return await self._send_tcp_command(command, action)
+
+    async def read_settings_from_eeprom(self) -> bool:
+        """Reads settings from EEPROM using M501."""
+        command = "~M501\r\n"
+        action = "READ SETTINGS FROM EEPROM (M501)"
+        _LOGGER.info(f"Attempting to {action}")
+        success, response = await self._send_tcp_command(command, action)
+        if success:
+            _LOGGER.info(f"Successfully read settings from EEPROM (M501). Full response logged at DEBUG level by TCP client. Response snippet: {response[:200]}...")
+        # _LOGGER.info(f"M501 (Read Settings from EEPROM) Response:\n{response}")
+        return success
 
     async def restore_factory_settings(self) -> bool:
         """Restores factory settings using M502."""

@@ -34,10 +34,18 @@ SERVICE_ENABLE_STEPPERS = "enable_steppers"
 SERVICE_SET_SPEED_PERCENTAGE = "set_speed_percentage"
 SERVICE_SET_FLOW_PERCENTAGE = "set_flow_percentage"
 SERVICE_HOME_AXES = "home_axes"
-SERVICE_FILAMENT_CHANGE = "filament_change"
 SERVICE_EMERGENCY_STOP = "emergency_stop"
-SERVICE_SAVE_SETTINGS = "save_settings"
-SERVICE_RESTORE_FACTORY_SETTINGS = "restore_factory_settings"
+# New service names
+SERVICE_LIST_FILES = "list_files"
+SERVICE_REPORT_FIRMWARE_CAPABILITIES = "report_firmware_capabilities"
+SERVICE_PLAY_BEEP = "play_beep"
+SERVICE_START_BED_LEVELING = "start_bed_leveling"
+SERVICE_SAVE_SETTINGS_TO_EEPROM = "save_settings_to_eeprom" # Renamed from save_settings
+SERVICE_READ_SETTINGS_FROM_EEPROM = "read_settings_from_eeprom"
+# Existing services that are being ensured or potentially modified
+SERVICE_FILAMENT_CHANGE = "filament_change" # Existing
+SERVICE_RESTORE_FACTORY_SETTINGS = "restore_factory_settings" # Existing
+
 
 # Platforms
 PLATFORMS = ["sensor", "camera", "binary_sensor"] # Define PLATFORMS
@@ -151,12 +159,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Simplified: using the first available coordinator.
         # Assumes only one printer is configured.
         # A more robust solution for multiple printers would involve targeting via device_id.
-        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
-            _LOGGER.error("Service 'delete_file' called, but no coordinators found.")
-            return
-
-        entry_id = list(hass.data[DOMAIN].keys())[0]
-        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
         file_path = call.data.get(ATTR_FILE_PATH)
         if not file_path: # Should be caught by schema, but good to double check
@@ -168,31 +171,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_disable_steppers(call: ServiceCall) -> None:
         """Handle the disable_steppers service call."""
-        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
-            _LOGGER.error(f"Service '{SERVICE_DISABLE_STEPPERS}' called, but integration not ready or no coordinators found.")
-            return
-        entry_id = list(hass.data[DOMAIN].keys())[0]
-        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
         _LOGGER.info(f"Service '{SERVICE_DISABLE_STEPPERS}' called.")
         await coordinator.disable_steppers()
 
     async def handle_enable_steppers(call: ServiceCall) -> None:
         """Handle the enable_steppers service call."""
-        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
-            _LOGGER.error(f"Service '{SERVICE_ENABLE_STEPPERS}' called, but integration not ready or no coordinators found.")
-            return
-        entry_id = list(hass.data[DOMAIN].keys())[0]
-        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
         _LOGGER.info(f"Service '{SERVICE_ENABLE_STEPPERS}' called.")
         await coordinator.enable_steppers()
 
     async def handle_set_speed_percentage(call: ServiceCall) -> None:
         """Handle the set_speed_percentage service call."""
-        if not hass.data.get(DOMAIN) or not list(hass.data[DOMAIN].keys()):
-            _LOGGER.error(f"Service '{SERVICE_SET_SPEED_PERCENTAGE}' called, but integration not ready or no coordinators found.")
-            return
-        entry_id = list(hass.data[DOMAIN].keys())[0]
-        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
         percentage = call.data.get(ATTR_PERCENTAGE)
         if percentage is None: # Schema ensures it's an int if present
@@ -224,43 +215,79 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_filament_change(call: ServiceCall) -> None:
         """Handle the filament_change service call."""
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
         _LOGGER.info(f"Service '{SERVICE_FILAMENT_CHANGE}' called.")
         await coordinator.filament_change()
 
     async def handle_emergency_stop(call: ServiceCall) -> None:
         """Handle the emergency_stop service call."""
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
         _LOGGER.warning(f"Service '{SERVICE_EMERGENCY_STOP}' called. Printer will halt immediately.")
         await coordinator.emergency_stop()
 
-    async def handle_save_settings(call: ServiceCall) -> None:
-        """Handle the save_settings service call."""
-        coordinator = hass.data[DOMAIN][entry.entry_id]
-        _LOGGER.info(f"Service '{SERVICE_SAVE_SETTINGS}' called.")
-        await coordinator.save_settings()
+    async def handle_save_settings_to_eeprom(call: ServiceCall) -> None: # Renamed handler
+        """Handle the save_settings_to_eeprom service call."""
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_SAVE_SETTINGS_TO_EEPROM}' called.")
+        await coordinator.save_settings_to_eeprom()
 
     async def handle_restore_factory_settings(call: ServiceCall) -> None:
         """Handle the restore_factory_settings service call."""
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
         _LOGGER.warning(f"Service '{SERVICE_RESTORE_FACTORY_SETTINGS}' called. This may erase calibration and settings.")
         await coordinator.restore_factory_settings()
 
-    hass.services.async_register(DOMAIN, "pause_print", handle_pause_print)
+    # Define handlers for new services
+    async def handle_list_files(call: ServiceCall) -> None:
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_LIST_FILES}' called.")
+        await coordinator.list_files()
+
+    async def handle_report_firmware_capabilities(call: ServiceCall) -> None:
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_REPORT_FIRMWARE_CAPABILITIES}' called.")
+        await coordinator.report_firmware_capabilities()
+
+    SERVICE_PLAY_BEEP_SCHEMA = vol.Schema(
+        {
+            vol.Required("pitch"): vol.All(vol.Coerce(int), vol.Range(min=0, max=10000)),
+            vol.Required("duration"): vol.All(vol.Coerce(int), vol.Range(min=0, max=10000)),
+        }
+    )
+    async def handle_play_beep(call: ServiceCall) -> None:
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        pitch = call.data["pitch"]
+        duration = call.data["duration"]
+        _LOGGER.info(f"Service '{SERVICE_PLAY_BEEP}' called with pitch: {pitch}, duration: {duration}.")
+        await coordinator.play_beep(pitch, duration)
+
+    async def handle_start_bed_leveling(call: ServiceCall) -> None:
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_START_BED_LEVELING}' called.")
+        await coordinator.start_bed_leveling()
+
+    async def handle_read_settings_from_eeprom(call: ServiceCall) -> None:
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        _LOGGER.info(f"Service '{SERVICE_READ_SETTINGS_FROM_EEPROM}' called.")
+        await coordinator.read_settings_from_eeprom()
+
+
+    # Register all services
+    hass.services.async_register(DOMAIN, SERVICE_PAUSE_PRINT, handle_pause_print)
     hass.services.async_register(
         DOMAIN,
-        "start_print",
+        SERVICE_START_PRINT,
         handle_start_print,
         schema=vol.Schema(
             {
-                vol.Required(ATTR_FILE_PATH): cv.string, # Use ATTR_FILE_PATH
+                vol.Required(ATTR_FILE_PATH): cv.string,
             }
         ),
     )
-    hass.services.async_register(DOMAIN, "cancel_print", handle_cancel_print)
+    hass.services.async_register(DOMAIN, SERVICE_CANCEL_PRINT, handle_cancel_print)
     hass.services.async_register(
         DOMAIN,
-        "toggle_light",
+        SERVICE_TOGGLE_LIGHT,
         handle_toggle_light,
         schema=vol.Schema(
             {
@@ -268,31 +295,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             }
         ),
     )
-    hass.services.async_register(DOMAIN, "resume_print", handle_resume_print)
+    hass.services.async_register(DOMAIN, SERVICE_RESUME_PRINT, handle_resume_print)
     hass.services.async_register(
         DOMAIN,
-        "set_extruder_temperature",
+        SERVICE_SET_EXTRUDER_TEMPERATURE,
         handle_set_extruder_temperature,
         schema=vol.Schema({vol.Required("temperature"): cv.positive_int}),
     )
     hass.services.async_register(
         DOMAIN,
-        "set_bed_temperature",
+        SERVICE_SET_BED_TEMPERATURE,
         handle_set_bed_temperature,
         schema=vol.Schema({vol.Required("temperature"): cv.positive_int}),
     )
     hass.services.async_register(
         DOMAIN,
-        "set_fan_speed",
+        SERVICE_SET_FAN_SPEED,
         handle_set_fan_speed,
         schema=vol.Schema(
             {vol.Required("speed"): vol.All(vol.Coerce(int), vol.Range(min=0, max=255))}
         ),
     )
-    hass.services.async_register(DOMAIN, "turn_fan_off", handle_turn_fan_off)
+    hass.services.async_register(DOMAIN, SERVICE_TURN_FAN_OFF, handle_turn_fan_off)
     hass.services.async_register(
         DOMAIN,
-        "move_axis",
+        SERVICE_MOVE_AXIS,
         handle_move_axis,
         schema=vol.Schema(
             {
@@ -315,10 +342,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.services.async_register(
         DOMAIN, SERVICE_DISABLE_STEPPERS, handle_disable_steppers
-    ) # No schema needed as there are no fields
+    )
     hass.services.async_register(
         DOMAIN, SERVICE_ENABLE_STEPPERS, handle_enable_steppers
-    ) # No schema needed
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_SPEED_PERCENTAGE,
@@ -339,10 +366,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             vol.Optional(ATTR_HOME_Z, default=False): cv.boolean,
         })
     )
-    hass.services.async_register(DOMAIN, SERVICE_FILAMENT_CHANGE, handle_filament_change)
-    hass.services.async_register(DOMAIN, SERVICE_EMERGENCY_STOP, handle_emergency_stop)
-    hass.services.async_register(DOMAIN, SERVICE_SAVE_SETTINGS, handle_save_settings)
-    hass.services.async_register(DOMAIN, SERVICE_RESTORE_FACTORY_SETTINGS, handle_restore_factory_settings)
+    # Updated/Verified existing services
+    hass.services.async_register(DOMAIN, SERVICE_FILAMENT_CHANGE, handle_filament_change) # Existing
+    hass.services.async_register(DOMAIN, SERVICE_EMERGENCY_STOP, handle_emergency_stop) # Existing
+    hass.services.async_register(DOMAIN, SERVICE_SAVE_SETTINGS_TO_EEPROM, handle_save_settings_to_eeprom) # Renamed
+    hass.services.async_register(DOMAIN, SERVICE_RESTORE_FACTORY_SETTINGS, handle_restore_factory_settings) # Existing
+
+    # Register new services
+    hass.services.async_register(DOMAIN, SERVICE_LIST_FILES, handle_list_files)
+    hass.services.async_register(DOMAIN, SERVICE_REPORT_FIRMWARE_CAPABILITIES, handle_report_firmware_capabilities)
+    hass.services.async_register(DOMAIN, SERVICE_PLAY_BEEP, handle_play_beep, schema=SERVICE_PLAY_BEEP_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_START_BED_LEVELING, handle_start_bed_leveling)
+    hass.services.async_register(DOMAIN, SERVICE_READ_SETTINGS_FROM_EEPROM, handle_read_settings_from_eeprom)
 
     return True
 
@@ -359,6 +394,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.info(
                 "Last entry for domain %s unloaded; unregistering services.", DOMAIN
             )
+            # Combine all service names for unregistration
             all_service_names = [
                 SERVICE_PAUSE_PRINT, SERVICE_START_PRINT, SERVICE_CANCEL_PRINT,
                 SERVICE_TOGGLE_LIGHT, SERVICE_RESUME_PRINT,
@@ -366,11 +402,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 SERVICE_SET_FAN_SPEED, SERVICE_TURN_FAN_OFF, SERVICE_MOVE_AXIS,
                 SERVICE_DELETE_FILE, SERVICE_DISABLE_STEPPERS, SERVICE_ENABLE_STEPPERS,
                 SERVICE_SET_SPEED_PERCENTAGE, SERVICE_SET_FLOW_PERCENTAGE,
-                SERVICE_HOME_AXES, SERVICE_FILAMENT_CHANGE, SERVICE_EMERGENCY_STOP,
-                SERVICE_SAVE_SETTINGS, SERVICE_RESTORE_FACTORY_SETTINGS,
+                SERVICE_HOME_AXES, SERVICE_EMERGENCY_STOP,
+                # Updated/New services
+                SERVICE_FILAMENT_CHANGE,
+                SERVICE_SAVE_SETTINGS_TO_EEPROM, # Renamed
+                SERVICE_RESTORE_FACTORY_SETTINGS,
+                SERVICE_LIST_FILES,
+                SERVICE_REPORT_FIRMWARE_CAPABILITIES,
+                SERVICE_PLAY_BEEP,
+                SERVICE_START_BED_LEVELING,
+                SERVICE_READ_SETTINGS_FROM_EEPROM,
             ]
             for service_name in all_service_names:
-                if service_name:  # Should always be true if constants are defined
+                if service_name:
                     _LOGGER.debug("Unregistering service: %s.%s", DOMAIN, service_name)
                     hass.services.async_remove(DOMAIN, service_name)
 

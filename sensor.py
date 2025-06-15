@@ -13,6 +13,8 @@ from homeassistant.const import (
     UnitOfInformation,
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    SPEED_MILLIMETERS_PER_SECOND,
 )
 from typing import Dict, Any # Import Dict and Any for type hinting
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -195,7 +197,7 @@ SENSOR_DEFINITIONS = {
     # "internalFanStatus": ("Internal Fan Status", None, None, None, False, False), # Replaced by binary_sensor
     "tvoc": (
         "TVOC",
-        "µg/m³",
+        CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
         SensorDeviceClass.VOLATILE_ORGANIC_COMPOUNDS,
         SensorStateClass.MEASUREMENT,
         False,
@@ -229,7 +231,7 @@ SENSOR_DEFINITIONS = {
     ),
     "currentPrintSpeed": (
         "Current Print Speed",
-        "mm/s",
+        SPEED_MILLIMETERS_PER_SECOND,
         SensorDeviceClass.SPEED,
         SensorStateClass.MEASUREMENT,
         False,
