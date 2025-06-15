@@ -43,7 +43,7 @@ toggle_light:
       required: true
       example: true
       selector:
-        boolean:
+        boolean: {}
 
 resume_print:
   name: Resume Print
