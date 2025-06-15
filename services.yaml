@@ -21,7 +21,7 @@ start_print:
       required: true
       example: "/PrintFiles/model.gcode"
       selector:
-        text:
+        text: {}
 
 cancel_print:
   name: Cancel Print
@@ -118,25 +118,25 @@ move_axis:
       description: Target X-axis coordinate in mm.
       optional: true
       selector:
-        number: {} # Simplified selector
+        number: {mode: box}
     y:
       name: Y Coordinate
       description: Target Y-axis coordinate in mm.
       optional: true
       selector:
-        number: {} # Simplified selector
+        number: {mode: box}
     z:
       name: Z Coordinate
       description: Target Z-axis coordinate in mm.
       optional: true
       selector:
-        number: {} # Simplified selector
+        number: {mode: box}
     feedrate:
       name: Feedrate
       description: Speed of movement in mm/minute. Printer's default if not specified.
       optional: true
       selector:
-        number: {} # Simplified selector
+        number: {mode: box, unit_of_measurement: "mm/min"}
 
 delete_file:
   name: Delete File
@@ -147,7 +147,7 @@ delete_file:
       description: "The path of the file to delete. Examples: 'test.gcode', '/data/user/test.gcode'."
       required: true
       selector:
-        text:
+        text: {}
 
 disable_steppers:
   name: Disable Stepper Motors
@@ -198,19 +198,19 @@ home_axes:
       description: "Set to true to include X-axis in homing."
       optional: true
       selector:
-        boolean:
+        boolean: {}
     y:
       name: Home Y-axis
       description: "Set to true to include Y-axis in homing."
       optional: true
       selector:
-        boolean:
+        boolean: {}
     z:
       name: Home Z-axis
       description: "Set to true to include Z-axis in homing."
       optional: true
       selector:
-        boolean:
+        boolean: {}
 
 # Existing services (verified)
 filament_change:
