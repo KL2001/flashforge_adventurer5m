@@ -45,6 +45,7 @@ SERVICE_READ_SETTINGS_FROM_EEPROM = "read_settings_from_eeprom"
 # Existing services that are being ensured or potentially modified
 SERVICE_FILAMENT_CHANGE = "filament_change" # Existing
 SERVICE_RESTORE_FACTORY_SETTINGS = "restore_factory_settings" # Existing
+SERVICE_MOVE_RELATIVE = "move_relative"
 
 
 # Platforms
@@ -271,6 +272,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info(f"Service '{SERVICE_READ_SETTINGS_FROM_EEPROM}' called.")
         await coordinator.read_settings_from_eeprom()
 
+    SERVICE_MOVE_RELATIVE_SCHEMA = vol.Schema(
+        {
+            vol.Optional("x"): vol.Coerce(float),
+            vol.Optional("y"): vol.Coerce(float),
+            vol.Optional("z"): vol.Coerce(float),
+            vol.Optional("feedrate"): vol.All(vol.Coerce(int), vol.Range(min=1)),
+        }
+    )
+    async def handle_move_relative(call: ServiceCall) -> None:
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        x = call.data.get("x")
+        y = call.data.get("y")
+        z = call.data.get("z")
+        feedrate = call.data.get("feedrate")
+        _LOGGER.info(f"Service '{SERVICE_MOVE_RELATIVE}' called with offsets: x={x}, y={y}, z={z}, feedrate={feedrate}")
+        await coordinator.move_relative(x=x, y=y, z=z, feedrate=feedrate)
 
     # Register all services
     hass.services.async_register(DOMAIN, SERVICE_PAUSE_PRINT, handle_pause_print)
@@ -378,6 +395,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, SERVICE_PLAY_BEEP, handle_play_beep, schema=SERVICE_PLAY_BEEP_SCHEMA)
     hass.services.async_register(DOMAIN, SERVICE_START_BED_LEVELING, handle_start_bed_leveling)
     hass.services.async_register(DOMAIN, SERVICE_READ_SETTINGS_FROM_EEPROM, handle_read_settings_from_eeprom)
+    hass.services.async_register(DOMAIN, SERVICE_MOVE_RELATIVE, handle_move_relative, schema=SERVICE_MOVE_RELATIVE_SCHEMA)
 
     return True
 
@@ -412,6 +430,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 SERVICE_PLAY_BEEP,
                 SERVICE_START_BED_LEVELING,
                 SERVICE_READ_SETTINGS_FROM_EEPROM,
+                SERVICE_MOVE_RELATIVE,
             ]
             for service_name in all_service_names:
                 if service_name:

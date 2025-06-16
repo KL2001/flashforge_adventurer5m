@@ -117,3 +117,8 @@ NAME_BED_LEVELING = "Bed Leveling Active"
 
 # Bed Leveling Sensor Icon
 ICON_BED_LEVELING = "mdi:checkerboard" # Or mdi:format-list-bulleted-type
+
+# Service Name Constants
+# (It's better to import these from __init__.py if they are defined there,
+# but if defined here, ensure they match __init__.py and services.yaml)
+SERVICE_MOVE_RELATIVE = "move_relative"

@@ -118,25 +118,25 @@ move_axis:
       description: Target X-axis coordinate in mm.
       optional: true
       selector:
-        number: {mode: box}
+        number: {mode: slider, min: 0, max: 220, unit_of_measurement: "mm"}
     y:
       name: Y Coordinate
       description: Target Y-axis coordinate in mm.
       optional: true
       selector:
-        number: {mode: box}
+        number: {mode: slider, min: 0, max: 220, unit_of_measurement: "mm"}
     z:
       name: Z Coordinate
       description: Target Z-axis coordinate in mm.
       optional: true
       selector:
-        number: {mode: box}
+        number: {mode: slider, min: 0, max: 220, unit_of_measurement: "mm"}
     feedrate:
       name: Feedrate
       description: Speed of movement in mm/minute. Printer's default if not specified.
       optional: true
       selector:
-        number: {mode: box, unit_of_measurement: "mm/min"}
+        number: {mode: slider, min: 100, max: 6000, unit_of_measurement: "mm/min"}
 
 delete_file:
   name: Delete File
@@ -281,3 +281,44 @@ read_settings_from_eeprom:
   name: Read Settings from EEPROM
   description: "Reads current settings from EEPROM (via M501) and logs them. The full output is logged at DEBUG level, a summary may be logged at INFO level."
   fields: {}
+
+move_relative:
+  name: Move Relative
+  description: "Moves printer axes by a relative amount. Specify at least one axis. Printer returns to absolute G-code mode afterwards."
+  fields:
+    x:
+      name: X Offset
+      description: "Relative move for X-axis (mm). Positive or negative."
+      optional: true
+      example: 10.0
+      selector:
+        number:
+          mode: box
+          # No unit_of_measurement needed for offset, but could add step: 0.1 for UI
+    y:
+      name: Y Offset
+      description: "Relative move for Y-axis (mm). Positive or negative."
+      optional: true
+      example: -5.5
+      selector:
+        number:
+          mode: box
+    z:
+      name: Z Offset
+      description: "Relative move for Z-axis (mm). Positive or negative."
+      optional: true
+      example: 1.0
+      selector:
+        number:
+          mode: box
+    feedrate:
+      name: Feedrate
+      description: "Speed for this relative move (mm/min). Optional. Uses printer default if not set."
+      optional: true
+      example: 1500
+      selector:
+        number:
+          mode: box
+          min: 100 # Consistent with move_axis
+          max: 6000 # Consistent with move_axis
+          unit_of_measurement: "mm/min"
