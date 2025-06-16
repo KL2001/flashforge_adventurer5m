@@ -646,6 +646,62 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
 
         return await self._send_tcp_command(command, action)
 
+    async def move_relative(self, x: Optional[float]=None, y: Optional[float]=None, z: Optional[float]=None, feedrate: Optional[int]=None) -> bool:
+        """Moves printer axes by a relative amount using G91 then G0, then restores G90."""
+        _LOGGER.info(f"Attempting relative move with offsets: x={x}, y={y}, z={z} at feedrate={feedrate}")
+
+        success_g91, _ = await self._send_tcp_command("~G91\r\n", "SET RELATIVE POSITIONING (G91)")
+        if not success_g91:
+            _LOGGER.error("Failed to set relative positioning (G91). Aborting relative move.")
+            # Attempt to restore absolute positioning just in case, though G91 failure is problematic
+            await self._send_tcp_command("~G90\r\n", "RESTORE ABSOLUTE POSITIONING (G90) after G91 fail")
+            return False
+
+        move_attempted = False
+        success_move = True  # Default to true if no move is actually made
+
+        command_parts = ["~G0"]
+        action_parts_log = []
+        if x is not None:
+            command_parts.append(f"X{x}")
+            action_parts_log.append(f"X:{x}")
+        if y is not None:
+            command_parts.append(f"Y{y}")
+            action_parts_log.append(f"Y:{y}")
+        if z is not None:
+            command_parts.append(f"Z{z}")
+            action_parts_log.append(f"Z:{z}")
+
+        if feedrate is not None and feedrate > 0:
+            command_parts.append(f"F{feedrate}")
+            action_parts_log.append(f"F:{feedrate}")
+        elif feedrate is not None: # feedrate is 0 or negative
+             _LOGGER.warning(f"Invalid feedrate for relative move: {feedrate}. Must be positive. Ignoring feedrate.")
+
+
+        if len(command_parts) > 1:  # More than just "~G0"
+            move_attempted = True
+            move_command = " ".join(command_parts) + "\r\n"
+            relative_move_action_log = f"MOVE RELATIVE ({', '.join(action_parts_log)})"
+            success_move, _ = await self._send_tcp_command(move_command, relative_move_action_log)
+            if not success_move:
+                _LOGGER.error(f"Relative move command ({move_command.strip()}) failed.")
+        else:
+            _LOGGER.warning("No axis offset provided for relative move. Skipping G0 command.")
+            # No move was attempted, so success_move remains True
+
+        success_g90, _ = await self._send_tcp_command("~G90\r\n", "RESTORE ABSOLUTE POSITIONING (G90)")
+        if not success_g90:
+            _LOGGER.error("Critical: Failed to restore absolute positioning (G90) after relative move sequence.")
+            # Even if G90 fails, the overall success depends on G91 and the move itself.
+            # However, a G90 failure is a significant issue for future commands.
+            return False # G90 is critical to restore printer state for other operations
+
+        if move_attempted:
+            return success_g91 and success_move and success_g90
+        else: # No move attempted, only G91 and G90 mattered
+            return success_g91 and success_g90
+
     async def delete_file(self, file_path: str) -> bool:
         """Deletes a file from the printer's storage using M30."""
         command_file_path = file_path
