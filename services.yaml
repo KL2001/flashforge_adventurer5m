@@ -161,7 +161,7 @@ enable_steppers:
 
 set_speed_percentage:
   name: Set Speed Percentage
-  description: Sets the printer's speed factor override (feedrate percentage via M220). Example: S100 is normal speed, S150 is 150%.
+  description: Sets the printer's speed factor override (feedrate percentage via M220). #Example: S100 is normal speed, S150 is 150%.
   fields:
     percentage:
       name: Percentage
@@ -176,7 +176,7 @@ set_speed_percentage:
 
 set_flow_percentage:
   name: Set Flow Percentage
-  description: Sets the printer's extrusion flow rate percentage (M221 S<percentage>). Example: S100 is normal flow.
+  description: Sets the printer's extrusion flow rate percentage (M221 S<percentage>). #Example: S100 is normal flow.
   fields:
     percentage:
       name: Percentage
