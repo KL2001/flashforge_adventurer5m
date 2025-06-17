@@ -74,6 +74,14 @@ This project integrates the **FlashForge Adventurer 5M** 3D printer in LAN mode 
 
    Restart Home Assistant to apply the changes.
 
+### Sensor Update Intervals
+This integration allows you to configure two sensor update intervals via the integration's "Configure" option in Home Assistant (under Settings > Devices & Services):
+
+*   **Scan Interval:** The standard update interval for fetching data from the printer when it is idle or in a non-printing state. Default is 10 seconds.
+*   **Printing Scan Interval:** A faster update interval used when the printer is actively printing (e.g., status is BUILDING, PRINTING, RUNNING). This allows for more real-time monitoring of progress, temperatures, etc., during a print. Default is 2 seconds.
+
+Adjust these values based on your needs and network performance. Faster updates provide more current data but can increase network traffic and load on Home Assistant and the printer.
+
 ## Usage
 
 After installation, the FlashForge Adventurer 5M Pro integration will appear in the Home Assistant UI. You can manage your 3D printer through the available entities, including sensors and camera feed.
