@@ -25,6 +25,8 @@ from homeassistant.const import CONF_HOST, CONF_SCAN_INTERVAL
 from .const import (
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_PRINTING_SCAN_INTERVAL,
+    CONF_PRINTING_SCAN_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_HOST,
     TIMEOUT_CONNECTION_TEST,
@@ -85,6 +87,10 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
             CONF_SCAN_INTERVAL,
             self.config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         )
+        current_printing_scan_interval = self.config_entry.options.get(
+            CONF_PRINTING_SCAN_INTERVAL,
+            DEFAULT_PRINTING_SCAN_INTERVAL
+        )
 
         # Build the options schema
         options_schema = vol.Schema(
@@ -92,6 +98,9 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_SCAN_INTERVAL, default=current_scan_interval
                 ): vol.All(vol.Coerce(int), vol.Range(min=5, max=300)),
+                vol.Required(
+                    CONF_PRINTING_SCAN_INTERVAL, default=current_printing_scan_interval
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=15)),
             }
         )
 
@@ -102,6 +111,8 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
             description_placeholders={
                 "min_scan_interval": "5",
                 "max_scan_interval": "300",
+                "min_printing_scan_interval": "1",
+                "max_printing_scan_interval": "15",
             },
         )
 

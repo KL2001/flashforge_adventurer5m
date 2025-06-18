@@ -30,6 +30,9 @@ from .const import (
     REQUIRED_RESPONSE_FIELDS,
     REQUIRED_DETAIL_FIELDS,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_PRINTING_SCAN_INTERVAL, # Added
+    PRINTING_STATES,               # Added
+    API_ATTR_STATUS,               # Added
     TCP_CMD_PRINT_FILE_PREFIX_USER,
     TCP_CMD_PRINT_FILE_PREFIX_ROOT,
     API_ATTR_DETAIL,
@@ -52,17 +55,20 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         host: str,
         serial_number: str,
         check_code: str,
-        scan_interval: int = DEFAULT_SCAN_INTERVAL,
+        regular_scan_interval: int = DEFAULT_SCAN_INTERVAL, # Renamed
+        printing_scan_interval: int = DEFAULT_PRINTING_SCAN_INTERVAL, # Added
     ):
         super().__init__(
             hass,
             _LOGGER,
             name=f"{DOMAIN}_coordinator",
-            update_interval=timedelta(seconds=scan_interval),
+            update_interval=timedelta(seconds=regular_scan_interval), # Use regular_scan_interval
         )
         self.host = host
         self.serial_number = serial_number
         self.check_code = check_code
+        self.regular_scan_interval = regular_scan_interval # Stored
+        self.printing_scan_interval = printing_scan_interval # Stored
         self.connection_state = CONNECTION_STATE_UNKNOWN
         self.data: dict[str, Any] = (
             {}
@@ -333,11 +339,39 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
             return None
         return None  # Should not be reached, but linters might prefer it.
 
-    async def _async_update_data(
-        self,
-    ):  # This is the method called by DataUpdateCoordinator
-        """Fetch data from the printer via HTTP API for sensors, and TCP for files/coords."""
-        return await self._fetch_data()
+    async def _async_update_data(self):
+        # Determine current polling interval based on self.data from PREVIOUS poll
+        # (or initial regular_scan_interval if self.data is not yet populated)
+        # This logic is slightly tricky because self.update_interval is used by the *caller*
+        # to schedule the *next* call to this _async_update_data.
+        # So, when _async_update_data is entered, self.update_interval reflects what was decided
+        # at the end of the *previous* execution of _async_update_data.
+
+        # Fetch new data
+        fresh_data = await self._fetch_data()
+
+        # Now, based on fresh_data, decide what the *next* interval should be.
+        if fresh_data:
+            printer_status_detail = fresh_data.get(API_ATTR_DETAIL, {})
+            current_printer_status = printer_status_detail.get(API_ATTR_STATUS) if isinstance(printer_status_detail, dict) else None
+
+            is_printing = current_printer_status in PRINTING_STATES
+
+            desired_interval_seconds = self.printing_scan_interval if is_printing else self.regular_scan_interval
+
+            if self.update_interval.total_seconds() != desired_interval_seconds:
+                self.update_interval = timedelta(seconds=desired_interval_seconds)
+                _LOGGER.info(f"FlashForge coordinator update interval changed to {desired_interval_seconds} seconds (Status: {current_printer_status})")
+            else:
+                _LOGGER.debug(f"FlashForge coordinator update interval remains {desired_interval_seconds} seconds (Status: {current_printer_status})")
+        else:
+            _LOGGER.warning("No fresh data from _fetch_data. Interval not changed.")
+            # If fetch fails, and we were on printing interval, consider reverting to regular.
+            if self.update_interval.total_seconds() == self.printing_scan_interval:
+                self.update_interval = timedelta(seconds=self.regular_scan_interval)
+                _LOGGER.info(f"Reverting to regular scan interval ({self.regular_scan_interval}s) due to data fetch failure.")
+
+        return fresh_data
 
     async def _fetch_data(self):
         """Fetch data from HTTP /detail endpoint and, on subsequent updates, files/coords via TCP."""
