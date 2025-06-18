@@ -5,9 +5,13 @@ DOMAIN = "flashforge_adventurer5m"
 
 # Default settings
 DEFAULT_SCAN_INTERVAL = 10  # seconds
+DEFAULT_PRINTING_SCAN_INTERVAL = 2 # seconds
 DEFAULT_PORT = 8898
 DEFAULT_MCODE_PORT = 8899
 DEFAULT_HOST = "printer.local"
+
+# Configuration keys
+CONF_PRINTING_SCAN_INTERVAL = "printing_scan_interval"
 
 # Timeout settings (in seconds)
 TIMEOUT_API_CALL = 10

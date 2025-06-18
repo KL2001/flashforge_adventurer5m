@@ -4,7 +4,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
-from .const import DOMAIN, DEFAULT_SCAN_INTERVAL
+from .const import (
+    DOMAIN,
+    DEFAULT_SCAN_INTERVAL,
+    CONF_PRINTING_SCAN_INTERVAL, # Added
+    DEFAULT_PRINTING_SCAN_INTERVAL # Added
+)
 from .coordinator import FlashforgeDataUpdateCoordinator
 from homeassistant.core import ServiceCall # For type hinting
 
@@ -67,14 +72,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     host = entry.data["host"]
     serial_number = entry.data["serial_number"]
     check_code = entry.data["check_code"]
-    scan_interval = entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+
+    # Retrieve scan_interval (regular) from options, then data, then default
+    # CONF_SCAN_INTERVAL is a HASS built-in 'scan_interval', not from our .const directly for key name
+    scan_interval = entry.options.get(
+        "scan_interval", # Standard Home Assistant key for scan interval
+        entry.data.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+    )
+
+    # Retrieve printing_scan_interval from options, then data, then our const default
+    printing_scan_interval = entry.options.get(
+        CONF_PRINTING_SCAN_INTERVAL,
+        entry.data.get(CONF_PRINTING_SCAN_INTERVAL, DEFAULT_PRINTING_SCAN_INTERVAL)
+    )
 
     coordinator = FlashforgeDataUpdateCoordinator(
         hass,
         host=host,
         serial_number=serial_number,
         check_code=check_code,
-        scan_interval=scan_interval,
+        regular_scan_interval=scan_interval, # Pass as regular_scan_interval
+        printing_scan_interval=printing_scan_interval # Pass new printing_scan_interval
     )
 
     await coordinator.async_refresh()
@@ -86,6 +104,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(
         entry, ["sensor", "camera", "binary_sensor"]
     )
+
+    # Add options update listener if not already present (standard practice)
+    if not entry.update_listeners: # Check if any listeners are already attached
+        entry.add_update_listener(async_reload_entry)
 
     # Register services
     async def handle_pause_print(call):
@@ -400,6 +422,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+async def async_options_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """
     Handle removal/unloading of a config entry.
@@ -439,4 +466,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             hass.data.pop(DOMAIN) # Remove the domain from hass.data completely
 
+    # Remove the options listener when unloading the entry
+    # This might not be strictly necessary if the entry is being fully removed,
+    # but good practice if only partially unloading or if listener persists.
+    # However, standard HA reload on option change doesn't usually require explicit listener removal here.
+
     return unload_ok
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the config entry when options are updated."""
+    await async_unload_entry(hass, entry)
+    await async_setup_entry(hass, entry)
