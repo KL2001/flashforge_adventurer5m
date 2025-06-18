@@ -8,6 +8,10 @@ states including:
 - Light on/off status
 - Connection status
 - Error state
+- Auto-shutdown enabled status
+- Fan activity (internal and external)
+- Endstop states (X, Y, Z, filament)
+- Bed leveling status
 """
 
 import logging

@@ -126,8 +126,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as e:
             _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
 
-        if hasattr(tcp_client, '_writer') and tcp_client._writer and not tcp_client._writer.is_closing():
-            tcp_client.close()
+        # tcp_client.close() is handled by FlashforgeTCPClient's finally block
 
         return status_data
 
@@ -177,10 +176,7 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as e:
             _LOGGER.error(f"Exception during {action} TCP command: {e}", exc_info=True)
 
-        # Ensure client is closed if send_command itself had an issue before its own finally
-        # This check is a bit defensive as send_command should always close.
-        if hasattr(tcp_client, '_writer') and tcp_client._writer and not tcp_client._writer.is_closing():
-            tcp_client.close()
+        # tcp_client.close() is handled by FlashforgeTCPClient's finally block
 
         return endstop_data
 

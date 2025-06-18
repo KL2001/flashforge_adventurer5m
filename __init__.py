@@ -339,13 +339,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         SERVICE_SET_EXTRUDER_TEMPERATURE,
         handle_set_extruder_temperature,
-        schema=vol.Schema({vol.Required("temperature"): cv.positive_int}),
+        schema=vol.Schema({vol.Required("temperature"): vol.All(vol.Coerce(int), vol.Range(min=0))}),
     )
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_BED_TEMPERATURE,
         handle_set_bed_temperature,
-        schema=vol.Schema({vol.Required("temperature"): cv.positive_int}),
+        schema=vol.Schema({vol.Required("temperature"): vol.All(vol.Coerce(int), vol.Range(min=0))}),
     )
     hass.services.async_register(
         DOMAIN,
