@@ -82,7 +82,7 @@ API_ATTR_ESTIMATED_TIME = "estimatedTime"
 API_ATTR_FIRMWARE_VERSION = "firmwareVersion"
 API_ATTR_IP_ADDR = "ipAddr"
 API_ATTR_CAMERA_STREAM_URL = "cameraStreamUrl"
-API_ATTR_MODEL = "model"  # From camera.py device_info
+API_ATTR_MODEL = "model"  # API key for device model
 API_ATTR_DETAIL = "detail"  # For accessing the nested detail object
 
 # MJPEG Camera Settings
