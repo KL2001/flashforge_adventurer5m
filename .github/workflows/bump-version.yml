@@ -1,0 +1,36 @@
+name: Bump version & changelog
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  bump-and-changelog:
+    if: "!startsWith(github.event.head_commit.message, 'bump:')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          fetch-depth: 0
+
+      - name: Bump version & generate changelog
+        id: cz
+        uses: commitizen-tools/commitizen-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          changelog: true
+
+      - name: Log new version
+        run: echo "🔖 Bumped to version ${{ steps.cz.outputs.version }}"
+
+      # Optional: auto-create GitHub release
+      - name: Create GitHub Release
+        if: always()
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.cz.outputs.version }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
