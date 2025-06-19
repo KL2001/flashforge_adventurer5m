@@ -105,6 +105,24 @@ API_ATTR_FILAMENT_ENDSTOP_STATUS = "filament_endstop_status"
 # API Attribute Key for Bed Leveling Status (parsed from M420, stored in coordinator.data)
 API_ATTR_BED_LEVELING_STATUS = "bed_leveling_status"
 
+# Names for Endstop Binary Sensors
+NAME_X_ENDSTOP = "X Endstop"
+NAME_Y_ENDSTOP = "Y Endstop"
+NAME_Z_ENDSTOP = "Z Endstop"
+NAME_FILAMENT_ENDSTOP = "Filament Endstop"
+
+# Icons for Endstop Binary Sensors
+ICON_X_ENDSTOP = "mdi:axis-x-arrow"
+ICON_Y_ENDSTOP = "mdi:axis-y-arrow"
+ICON_Z_ENDSTOP = "mdi:axis-z-arrow"
+ICON_FILAMENT_ENDSTOP = "mdi:printer-3d-nozzle-alert"
+
+# Name for Bed Leveling Binary Sensor
+NAME_BED_LEVELING = "Bed Leveling Active"
+
+# Icon for Bed Leveling Binary Sensor
+ICON_BED_LEVELING = "mdi:format-list-numbered"
+
 # API Attribute Keys for Chamber and Extruder Temperatures (from API detail or other sources)
 API_ATTR_CHAMBER_TEMP = "chamberTemp"
 API_ATTR_CHAMBER_TARGET_TEMP = "chamberTargetTemp"
