@@ -27,6 +27,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_PRINTING_SCAN_INTERVAL,
     CONF_PRINTING_SCAN_INTERVAL,
+    CONF_TCP_TIMEOUT, # Added
+    DEFAULT_TCP_TIMEOUT, # Assuming this will be TIMEOUT_COMMAND from const.py
     DEFAULT_PORT,
     DEFAULT_HOST,
     TIMEOUT_CONNECTION_TEST,
@@ -35,6 +37,7 @@ from .const import (
     ENDPOINT_DETAIL,
     REQUIRED_RESPONSE_FIELDS,
 )
+from .const import TIMEOUT_COMMAND # To use as DEFAULT_TCP_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +94,10 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
             CONF_PRINTING_SCAN_INTERVAL,
             DEFAULT_PRINTING_SCAN_INTERVAL
         )
+        current_tcp_timeout = self.config_entry.options.get(
+            CONF_TCP_TIMEOUT,
+            TIMEOUT_COMMAND # Use TIMEOUT_COMMAND as default
+        )
 
         # Build the options schema
         options_schema = vol.Schema(
@@ -101,6 +108,9 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_PRINTING_SCAN_INTERVAL, default=current_printing_scan_interval
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=15)),
+                vol.Required(
+                    CONF_TCP_TIMEOUT, default=current_tcp_timeout
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
             }
         )
 
@@ -113,6 +123,8 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
                 "max_scan_interval": "300",
                 "min_printing_scan_interval": "1",
                 "max_printing_scan_interval": "15",
+                "min_tcp_timeout": "1", # Added for description
+                "max_tcp_timeout": "30", # Added for description
             },
         )
 

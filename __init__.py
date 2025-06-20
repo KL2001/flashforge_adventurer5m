@@ -51,10 +51,11 @@ SERVICE_READ_SETTINGS_FROM_EEPROM = "read_settings_from_eeprom"
 SERVICE_FILAMENT_CHANGE = "filament_change" # Existing
 SERVICE_RESTORE_FACTORY_SETTINGS = "restore_factory_settings" # Existing
 SERVICE_MOVE_RELATIVE = "move_relative"
+SERVICE_SEND_GCODE = "send_gcode" # New service name
 
 
 # Platforms
-PLATFORMS = ["sensor", "camera", "binary_sensor"] # Define PLATFORMS
+PLATFORMS = ["sensor", "camera", "binary_sensor", "number", "select", "button"] # Define PLATFORMS
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -311,6 +312,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info(f"Service '{SERVICE_MOVE_RELATIVE}' called with offsets: x={x}, y={y}, z={z}, feedrate={feedrate}")
         await coordinator.move_relative(x=x, y=y, z=z, feedrate=feedrate)
 
+    SEND_GCODE_SCHEMA = vol.Schema(
+        {
+            vol.Required("gcode_command"): cv.string,
+        }
+    )
+    async def handle_send_gcode(call: ServiceCall) -> None:
+        """Handle the send_gcode service call."""
+        coordinator: FlashforgeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+        gcode_command = call.data.get("gcode_command")
+        if gcode_command is not None: # Schema ensures it's a string
+            _LOGGER.info(f"Service '{SERVICE_SEND_GCODE}' called with command: {gcode_command[:50]}...")
+            await coordinator.async_send_gcode(gcode_command)
+        else: # Should not happen due to schema validation
+            _LOGGER.error(f"Service '{SERVICE_SEND_GCODE}' called without 'gcode_command'.")
+
+
     # Register all services
     hass.services.async_register(DOMAIN, SERVICE_PAUSE_PRINT, handle_pause_print)
     hass.services.async_register(
@@ -418,6 +435,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, SERVICE_START_BED_LEVELING, handle_start_bed_leveling)
     hass.services.async_register(DOMAIN, SERVICE_READ_SETTINGS_FROM_EEPROM, handle_read_settings_from_eeprom)
     hass.services.async_register(DOMAIN, SERVICE_MOVE_RELATIVE, handle_move_relative, schema=SERVICE_MOVE_RELATIVE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_SEND_GCODE, handle_send_gcode, schema=SEND_GCODE_SCHEMA)
 
     return True
 
@@ -458,9 +476,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 SERVICE_START_BED_LEVELING,
                 SERVICE_READ_SETTINGS_FROM_EEPROM,
                 SERVICE_MOVE_RELATIVE,
+                SERVICE_SEND_GCODE, # Added for unregistration
             ]
             for service_name in all_service_names:
-                if service_name:
+                if service_name: # Ensure service_name is not None or empty, though list should be clean
                     _LOGGER.debug("Unregistering service: %s.%s", DOMAIN, service_name)
                     hass.services.async_remove(DOMAIN, service_name)
 

@@ -35,7 +35,7 @@ toggle_light:
   description: >-
     Toggle the printer''s built-in LED light on or off.
   fields:
-    state:
+    state: # Note: Changed to 'on' in translations to match boolean typical usage
       name: State
       description: >-
         The desired state of the light. Set to true to turn the light on,
@@ -49,7 +49,7 @@ resume_print:
   name: Resume Print
   description: >-
     Resumes a previously paused print job on the Flashforge printer.
-  fields: {} # No fields are needed as it takes no arguments
+  fields: {}
 
 set_extruder_temperature:
   name: Set Extruder Temperature
@@ -64,8 +64,8 @@ set_extruder_temperature:
       selector:
         number:
           min: 0
-          max: 300 # Adjust max based on printer capability if known, else a safe upper limit
-          mode: box # Or slider
+          max: 300
+          mode: box
           unit_of_measurement: "°C"
 
 set_bed_temperature:
@@ -81,8 +81,8 @@ set_bed_temperature:
       selector:
         number:
           min: 0
-          max: 120 # Adjust max based on printer capability if known, else a safe upper limit
-          mode: box # Or slider
+          max: 120
+          mode: box
           unit_of_measurement: "°C"
 
 set_fan_speed:
@@ -99,13 +99,13 @@ set_fan_speed:
         number:
           min: 0
           max: 255
-          mode: slider # Slider is good for 0-255 range
+          mode: slider
 
 turn_fan_off:
   name: Turn Fan Off
   description: >-
     Turns the printer's cooling fan off (equivalent to setting speed to 0 with M107).
-  fields: {} # No fields needed
+  fields: {}
 
 move_axis:
   name: Move Axis
@@ -116,27 +116,27 @@ move_axis:
     x:
       name: X Coordinate
       description: Target X-axis coordinate in mm.
-      optional: true
+      optional: true # Changed from 'required: false' for consistency if that was intended
       selector:
-        number: {mode: slider, min: 0, max: 220, unit_of_measurement: "mm"}
+        number: {mode: box, min: 0, max: 220, unit_of_measurement: "mm"} # mode box is often better for direct input
     y:
       name: Y Coordinate
       description: Target Y-axis coordinate in mm.
       optional: true
       selector:
-        number: {mode: slider, min: 0, max: 220, unit_of_measurement: "mm"}
+        number: {mode: box, min: 0, max: 220, unit_of_measurement: "mm"}
     z:
       name: Z Coordinate
       description: Target Z-axis coordinate in mm.
       optional: true
       selector:
-        number: {mode: slider, min: 0, max: 220, unit_of_measurement: "mm"}
+        number: {mode: box, min: 0, max: 250, unit_of_measurement: "mm"} # Max Z might be different
     feedrate:
       name: Feedrate
       description: Speed of movement in mm/minute. Printer's default if not specified.
       optional: true
       selector:
-        number: {mode: slider, min: 100, max: 6000, unit_of_measurement: "mm/min"}
+        number: {mode: box, min: 100, max: 6000, unit_of_measurement: "mm/min"}
 
 delete_file:
   name: Delete File
@@ -152,16 +152,16 @@ delete_file:
 disable_steppers:
   name: Disable Stepper Motors
   description: Disables all stepper motors on the printer (M18). This allows manual movement of axes but they will re-engage on the next motion command.
-  fields: {} # No fields needed
+  fields: {}
 
 enable_steppers:
   name: Enable Stepper Motors
   description: Enables all stepper motors on the printer (M17). Stepper motors are typically enabled automatically when a motion command is sent.
-  fields: {} # No fields needed
+  fields: {}
 
 set_speed_percentage:
   name: Set Speed Percentage
-  description: Sets the printer's speed factor override (feedrate percentage via M220). #Example: S100 is normal speed, S150 is 150%.
+  description: Sets the printer's speed factor override (feedrate percentage via M220).
   fields:
     percentage:
       name: Percentage
@@ -169,14 +169,14 @@ set_speed_percentage:
       required: true
       selector:
         number:
-          min: 10  # Example practical minimum
-          max: 500 # Example practical maximum
+          min: 10
+          max: 500
           mode: slider
           unit_of_measurement: "%"
 
 set_flow_percentage:
   name: Set Flow Percentage
-  description: Sets the printer's extrusion flow rate percentage (M221 S<percentage>). #Example: S100 is normal flow.
+  description: Sets the printer's extrusion flow rate percentage (M221 S<percentage>).
   fields:
     percentage:
       name: Percentage
@@ -193,26 +193,14 @@ home_axes:
   name: Home Axes
   description: Homes one or more axes (G28). If no axes are specified, all axes are homed.
   fields:
-    x:
-      name: Home X-axis
-      description: "Set to true to include X-axis in homing."
-      optional: true
+    axes: # Changed from individual x,y,z booleans to a list of strings for flexibility
+      name: Axes
+      description: "Optional list of axes to home (e.g., ['X', 'Y']). If omitted or empty, all axes are homed."
+      required: false # Making it not required means all axes if omitted
+      example: ["X", "Y"]
       selector:
-        boolean: {}
-    y:
-      name: Home Y-axis
-      description: "Set to true to include Y-axis in homing."
-      optional: true
-      selector:
-        boolean: {}
-    z:
-      name: Home Z-axis
-      description: "Set to true to include Z-axis in homing."
-      optional: true
-      selector:
-        boolean: {}
+        object: {} # Represents a list; specific selector for list of strings might need custom handling or rely on text input of comma-separated values if UI supports. For services.yaml, 'object' is generic.
 
-# Existing services (verified)
 filament_change:
   name: Filament Change
   description: Initiates the filament change procedure (M600). Behavior depends on printer firmware.
@@ -223,8 +211,7 @@ emergency_stop:
   description: Immediately halts all printer operations (M112). Use with extreme caution.
   fields: {}
 
-# Updated service name and definition
-save_settings_to_eeprom: # Renamed from save_settings
+save_settings_to_eeprom:
   name: Save Settings to EEPROM
   description: Saves current settings to printer's EEPROM (via M500).
   fields: {}
@@ -234,7 +221,6 @@ restore_factory_settings:
   description: Restores printer to factory default settings (M502). Use with extreme caution; this may erase calibration.
   fields: {}
 
-# New service definitions
 list_files:
   name: List Files
   description: "Lists files on the printer's storage (via M20). The full list is logged at DEBUG level by the integration, a summary may be logged at INFO level."
@@ -294,7 +280,7 @@ move_relative:
       selector:
         number:
           mode: box
-          # No unit_of_measurement needed for offset, but could add step: 0.1 for UI
+          step: 0.1
     y:
       name: Y Offset
       description: "Relative move for Y-axis (mm). Positive or negative."
@@ -303,6 +289,7 @@ move_relative:
       selector:
         number:
           mode: box
+          step: 0.1
     z:
       name: Z Offset
       description: "Relative move for Z-axis (mm). Positive or negative."
@@ -311,6 +298,7 @@ move_relative:
       selector:
         number:
           mode: box
+          step: 0.1
     feedrate:
       name: Feedrate
       description: "Speed for this relative move (mm/min). Optional. Uses printer default if not set."
@@ -319,6 +307,21 @@ move_relative:
       selector:
         number:
           mode: box
-          min: 100 # Consistent with move_axis
-          max: 6000 # Consistent with move_axis
+          min: 100
+          max: 6000
           unit_of_measurement: "mm/min"
+
+send_gcode:
+  name: Send G-code Command
+  description: >-
+    Sends a raw G-code command directly to the printer.
+    Use with caution, as improper commands can cause issues.
+    Commands should typically be prefixed with '~' if required by the printer for M-codes/G-codes via TCP.
+  fields:
+    gcode_command:
+      name: G-code Command
+      description: "The raw G-code string to send to the printer (e.g., '~M105' or 'G28 X Y')."
+      required: true
+      example: "~M117 Hello World"
+      selector:
+        text: {}

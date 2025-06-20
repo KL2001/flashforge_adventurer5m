@@ -12,10 +12,11 @@ DEFAULT_HOST = "printer.local"
 
 # Configuration keys
 CONF_PRINTING_SCAN_INTERVAL = "printing_scan_interval"
+CONF_TCP_TIMEOUT = "tcp_timeout"
 
 # Timeout settings (in seconds)
 TIMEOUT_API_CALL = 10
-TIMEOUT_COMMAND = 5
+TIMEOUT_COMMAND = 5 # This will serve as DEFAULT_TCP_TIMEOUT for the new config option
 TIMEOUT_CONNECTION_TEST = 5
 
 # Retry settings

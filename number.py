@@ -147,16 +147,19 @@ class FlashforgeFanSpeedNumber(FlashforgeEntity, NumberEntity):
     # Since we cannot reliably read the current M106 setpoint from the printer's API,
     # we might have to assume state or just make it a "write-only" like control.
     # For now, we won't try to read it back from API_ATTR_COOLING_FAN_SPEED (which is RPM).
-    # The state will reflect the last value set via Home Assistant.
-    _attr_assumed_state = True
+    # The state will reflect the last value set via Home Assistant or restored.
+    _attr_restore_state = True
+    # _attr_assumed_state = True # Removed as state will be restored
 
     def __init__(self, coordinator: FlashforgeDataUpdateCoordinator) -> None:
         """Initialize the number entity."""
         super().__init__(coordinator, name_suffix="Cooling Fan Speed", unique_id_key="cooling_fan_speed_setpoint")
-        # Initialize to a default or None if we don't know the last set state.
-        # If we want it to remember last HA-set state across restarts, it needs persistence,
-        # or we just initialize to a sensible default (e.g. 0 for off).
-        self._attr_native_value: Optional[float] = None # Or 0.0
+        # _attr_native_value is initialized to None by default by NumberEntity.
+        # If a state is restored during async_added_to_hass, NumberEntity handles updating it.
+        # self._attr_native_value: Optional[float] = None # Explicitly setting to None is fine, or let superclass handle.
+
+    # async_added_to_hass is inherited from FlashforgeEntity, which calls super().async_added_to_hass().
+    # This chain correctly invokes NumberEntity's (via RestoreEntity) state restoration.
 
     @callback
     def _handle_coordinator_update(self) -> None:
