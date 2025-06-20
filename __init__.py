@@ -103,7 +103,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Forward setup to sensor and camera platforms using the updated method
     await hass.config_entries.async_forward_entry_setups(
-        entry, ["sensor", "camera", "binary_sensor"]
+        entry, PLATFORMS
     )
 
     # Add options update listener if not already present (standard practice)

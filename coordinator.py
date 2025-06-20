@@ -1054,3 +1054,5 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         if not success:
             await self._create_service_error_notification(action, response_or_error)
         return success
+
+[end of coordinator.py]
