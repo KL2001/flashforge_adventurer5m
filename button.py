@@ -211,4 +211,3 @@ class StartBedLevelingButton(FlashforgeButtonEntity):
             availability_func=_is_idle # Typically done when idle
         )
 
-```
