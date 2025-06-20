@@ -1,3 +1,6 @@
+"""Flashforge Adventurer 5M PRO integration setup module."""
+
+from __future__ import annotations
 import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -14,6 +17,12 @@ from .coordinator import FlashforgeDataUpdateCoordinator
 from homeassistant.core import ServiceCall
 
 _LOGGER = logging.getLogger(__name__)
+__all__ = [
+    "async_setup",
+    "async_setup_entry",
+    "async_unload_entry",
+    "async_reload_entry",
+]
 
 ATTR_FILE_PATH = "file_path"
 ATTR_PERCENTAGE = "percentage"
