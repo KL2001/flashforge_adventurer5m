@@ -878,4 +878,3 @@ class FlashforgeDataUpdateCoordinator(DataUpdateCoordinator):
         # M502 might also have non-standard response or cause a restart.
         return await self._send_tcp_command(command, action, response_terminator="ok\r\n")
 
-```
