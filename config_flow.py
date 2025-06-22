@@ -28,7 +28,7 @@ from .const import (
     DEFAULT_PRINTING_SCAN_INTERVAL,
     CONF_PRINTING_SCAN_INTERVAL,
     CONF_TCP_TIMEOUT, # Added
-    DEFAULT_TCP_TIMEOUT, # Assuming this will be TIMEOUT_COMMAND from const.py
+    DEFAULT_TCP_TIMEOUT,
     DEFAULT_PORT,
     DEFAULT_HOST,
     TIMEOUT_CONNECTION_TEST,
@@ -37,7 +37,7 @@ from .const import (
     ENDPOINT_DETAIL,
     REQUIRED_RESPONSE_FIELDS,
 )
-from .const import TIMEOUT_COMMAND # To use as DEFAULT_TCP_TIMEOUT
+# from .const import TIMEOUT_COMMAND # No longer needed, DEFAULT_TCP_TIMEOUT is used
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ class FlashforgeOptionsFlow(config_entries.OptionsFlow):
         )
         current_tcp_timeout = self.config_entry.options.get(
             CONF_TCP_TIMEOUT,
-            TIMEOUT_COMMAND # Use TIMEOUT_COMMAND as default
+            DEFAULT_TCP_TIMEOUT # Use the new default constant
         )
 
         # Build the options schema

@@ -17,6 +17,7 @@ CONF_TCP_TIMEOUT = "tcp_timeout"
 # Timeout settings (in seconds)
 TIMEOUT_API_CALL = 10
 TIMEOUT_COMMAND = 5 # This will serve as DEFAULT_TCP_TIMEOUT for the new config option
+DEFAULT_TCP_TIMEOUT = 5 # Default timeout for TCP client operations
 TIMEOUT_CONNECTION_TEST = 5
 
 # Retry settings
